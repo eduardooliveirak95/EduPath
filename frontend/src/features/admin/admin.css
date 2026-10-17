@@ -1,0 +1,126 @@
+/* Página Administração */
+
+/* Contas */
+.account-list {
+  display: grid;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.account-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 12px;
+  padding: 12px 0;
+  border-top: 1px solid var(--border);
+}
+
+.account-row:first-child {
+  border-top: 0;
+  padding-top: 0;
+}
+
+.account-row__info {
+  flex: 1 1 200px;
+  min-width: 0;
+}
+
+.account-row__name {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 8px;
+  font-weight: 700;
+}
+
+.account-row__email {
+  overflow: hidden;
+  color: var(--text-muted);
+  font-size: 0.85rem;
+  text-overflow: ellipsis;
+}
+
+.account-row__since {
+  color: var(--text-subtle);
+  font-size: 0.8rem;
+}
+
+/* Convites */
+.invites {
+  display: grid;
+  gap: 14px;
+}
+
+.invites__empty {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--text-muted);
+  font-size: 0.9rem;
+}
+
+.invite-list {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.invite {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+}
+
+.invite__main {
+  display: grid;
+  flex: 1 1 200px;
+  gap: 2px;
+  min-width: 0;
+}
+
+.invite__title {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 10px;
+}
+
+.invite__code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 0.95rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+
+.invite--closed .invite__code {
+  color: var(--text-subtle);
+}
+
+.invite__meta {
+  color: var(--text-muted);
+  font-size: 0.8rem;
+}
+
+.invite__actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-left: auto;
+}
+
+.invites__actions {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.admin {
+  max-width: 720px;
+}

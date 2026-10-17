@@ -1,0 +1,126 @@
+:root {
+  --font: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+
+  --bg: #f4f5f9;
+  --surface: #ffffff;
+  --surface-2: #f1f3f8;
+  --border: #e3e6ee;
+  --text: #161a27;
+  --text-muted: #5f6780;
+  --text-subtle: #8a91a7;
+
+  --primary: #4f46e5;
+  --primary-strong: #4338ca;
+  --primary-soft: #eceefe;
+  --on-primary: #ffffff;
+
+  --success: #15803d;
+  --success-soft: #e5f5eb;
+  --danger: #c62828;
+  --danger-soft: #fdecec;
+  --warning: #b45309;
+  --warning-soft: #fdf2e1;
+
+  --cat-saude: #16a34a;
+  --cat-carreira: #2563eb;
+  --cat-financas: #d97706;
+  --cat-aprendizagem: #7c3aed;
+  --cat-pessoal: #db2777;
+
+  --radius: 14px;
+  --radius-sm: 9px;
+  --shadow: 0 1px 2px rgb(16 24 40 / 0.04), 0 1px 3px rgb(16 24 40 / 0.06);
+  --shadow-lg: 0 12px 32px rgb(16 24 40 / 0.14);
+
+  --sidebar-width: 248px;
+  --topbar-height: 68px;
+
+  color-scheme: light;
+  font-family: var(--font);
+  font-size: 15px;
+  line-height: 1.5;
+  color: var(--text);
+  background: var(--bg);
+  -webkit-font-smoothing: antialiased;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #0f1117;
+    --surface: #171a23;
+    --surface-2: #1f2330;
+    --border: #2a2f3d;
+    --text: #e8eaf2;
+    --text-muted: #a2a9bd;
+    --text-subtle: #737a90;
+
+    --primary: #818cf8;
+    --primary-strong: #a5b4fc;
+    --primary-soft: #23264a;
+    --on-primary: #0f1117;
+
+    --success: #4ade80;
+    --success-soft: #15291d;
+    --danger: #f87171;
+    --danger-soft: #331a1c;
+    --warning: #fbbf24;
+    --warning-soft: #2f2514;
+
+    --cat-saude: #4ade80;
+    --cat-carreira: #60a5fa;
+    --cat-financas: #fbbf24;
+    --cat-aprendizagem: #a78bfa;
+    --cat-pessoal: #f472b6;
+
+    --shadow: 0 1px 2px rgb(0 0 0 / 0.3);
+    --shadow-lg: 0 12px 32px rgb(0 0 0 / 0.5);
+
+    color-scheme: dark;
+  }
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-width: 320px;
+  background: var(--bg);
+}
+
+h1,
+h2,
+h3,
+p {
+  margin: 0;
+}
+
+button {
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+}
+
+input,
+textarea,
+select {
+  font: inherit;
+  color: inherit;
+}
+
+:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}

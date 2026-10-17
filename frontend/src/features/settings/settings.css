@@ -1,0 +1,33 @@
+/* Página Definições */
+.settings {
+  display: grid;
+  gap: 20px;
+  max-width: 640px;
+}
+
+.settings__intro h1 {
+  font-size: 1.65rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+}
+
+.settings__intro p {
+  margin-top: 4px;
+  color: var(--text-muted);
+}
+
+.settings-form {
+  display: grid;
+  gap: 16px;
+}
+
+.settings-form__value {
+  padding: 9px 0;
+  color: var(--text-muted);
+  font-size: 0.92rem;
+}
+
+.settings-form__actions {
+  display: flex;
+  justify-content: flex-end;
+}

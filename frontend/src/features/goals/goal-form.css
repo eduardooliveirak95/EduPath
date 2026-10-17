@@ -1,0 +1,183 @@
+/* Janela modal */
+.modal {
+  width: min(580px, calc(100vw - 24px));
+  max-height: calc(100dvh - 24px);
+  padding: 0;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+  color: var(--text);
+  box-shadow: var(--shadow-lg);
+}
+
+.modal::backdrop {
+  background: rgb(10 12 20 / 0.5);
+}
+
+.goal-form {
+  display: flex;
+  flex-direction: column;
+  max-height: calc(100dvh - 26px);
+}
+
+.modal__header,
+.modal__footer {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 16px 20px;
+}
+
+.modal__header {
+  justify-content: space-between;
+  border-bottom: 1px solid var(--border);
+}
+
+.modal__header h2 {
+  font-size: 1.15rem;
+  font-weight: 800;
+}
+
+.modal__body {
+  display: grid;
+  gap: 18px;
+  padding: 20px;
+  overflow-y: auto;
+}
+
+.modal__footer {
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  border-top: 1px solid var(--border);
+}
+
+/* Campos */
+.field__optional {
+  color: var(--text-subtle);
+  font-weight: 500;
+}
+
+.field__value {
+  margin-left: 6px;
+  color: var(--primary);
+}
+
+.field-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+textarea.input {
+  resize: vertical;
+}
+
+.range {
+  width: 100%;
+  accent-color: var(--primary);
+}
+
+/* Escolha de categoria */
+.choices {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.choice {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 12px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  color: var(--text-muted);
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.choice:hover {
+  color: var(--text);
+}
+
+.choice:has(input:checked) {
+  border-color: var(--primary);
+  background: var(--primary-soft);
+  color: var(--primary);
+}
+
+.choice:has(input:focus-visible) {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+}
+
+/* Passos do plano */
+.plan-inputs {
+  display: grid;
+  gap: 8px;
+  margin: 0 0 4px;
+  padding: 0;
+  list-style: none;
+}
+
+.plan-input {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.plan-input__number {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: var(--surface-2);
+  color: var(--text-muted);
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+
+.plan-input__check {
+  flex: none;
+  width: 18px;
+  height: 18px;
+  margin: 3px;
+  accent-color: var(--primary);
+  cursor: pointer;
+}
+
+.plan-input--done .input {
+  color: var(--text-muted);
+  text-decoration: line-through;
+}
+
+.plan-input__remove {
+  flex: none;
+}
+
+/* Apagar fica à esquerda, longe de Guardar. */
+.modal__delete {
+  margin-right: auto;
+}
+
+.modal__confirm {
+  flex: 1 1 220px;
+  margin-right: auto;
+  color: var(--danger);
+  font-size: 0.88rem;
+  font-weight: 600;
+}
+
+/* O erro ocupa uma linha inteira, por cima dos botões. */
+.modal__footer .form-error {
+  flex-basis: 100%;
+}
+
+@media (max-width: 480px) {
+  .field-row {
+    grid-template-columns: 1fr;
+  }
+}

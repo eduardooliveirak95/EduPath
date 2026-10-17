@@ -1,0 +1,153 @@
+from datetime import date
+
+from fastapi import APIRouter, HTTPException, status
+from sqlalchemy import ColumnElement, and_, select
+
+from app.deps import CurrentUserDep, SessionDep, TodayDep, get_goal_or_404
+from app.models import Category, Goal, GoalStatus, PlanStep
+from app.schemas import (
+    DATES_ORDER_ERROR,
+    EvaluationCreate,
+    GoalCreate,
+    GoalRead,
+    GoalUpdate,
+    PlanStepEdit,
+)
+
+router = APIRouter(prefix="/api/goals", tags=["objetivos"])
+
+
+def status_filter(goal_status: GoalStatus, today: date) -> ColumnElement[bool]:
+    """Condição SQL equivalente a `Goal.status(today) == goal_status`."""
+    match goal_status:
+        case GoalStatus.EM_CURSO:
+            return and_(Goal.outcome.is_(None), Goal.target_date >= today)
+        case GoalStatus.POR_AVALIAR:
+            return and_(Goal.outcome.is_(None), Goal.target_date < today)
+        case _:
+            return Goal.outcome == goal_status.value
+
+
+def replace_plan(goal: Goal, steps: list[PlanStepEdit]) -> None:
+    """Põe no plano os passos recebidos, por esta ordem; os que não vierem são apagados."""
+    current = {step.id: step for step in goal.plan}
+    ids = [step.id for step in steps if step.id is not None]
+    if len(ids) != len(set(ids)):
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, "Há passos repetidos no plano.")
+    if any(step_id not in current for step_id in ids):
+        raise HTTPException(
+            status.HTTP_422_UNPROCESSABLE_CONTENT, "Há passos que não pertencem a este objetivo."
+        )
+
+    plan = []
+    for position, data in enumerate(steps):
+        step = current[data.id] if data.id is not None else PlanStep()
+        step.title, step.done, step.position = data.title, data.done, position
+        plan.append(step)
+    goal.plan = plan  # os passos que ficaram de fora são apagados (delete-orphan)
+
+
+@router.get("", response_model=list[GoalRead])
+def list_goals(
+    session: SessionDep,
+    user: CurrentUserDep,
+    today: TodayDep,
+    status: GoalStatus | None = None,
+    category: Category | None = None,
+):
+    """Lista os objetivos por ordem de data limite, com filtros opcionais."""
+    query = select(Goal).where(Goal.user_id == user.id).order_by(Goal.target_date, Goal.id)
+    if status is not None:
+        query = query.where(status_filter(status, today))
+    if category is not None:
+        query = query.where(Goal.category == category)
+    return [GoalRead.from_goal(goal, today) for goal in session.scalars(query)]
+
+
+@router.post("", response_model=GoalRead, status_code=status.HTTP_201_CREATED)
+def create_goal(payload: GoalCreate, session: SessionDep, user: CurrentUserDep, today: TodayDep):
+    start_date = payload.start_date or today
+    if payload.target_date < start_date:
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, DATES_ORDER_ERROR)
+
+    goal = Goal(
+        user_id=user.id,
+        title=payload.title,
+        description=payload.description,
+        category=payload.category,
+        start_date=start_date,
+        target_date=payload.target_date,
+        progress=payload.progress,
+        plan=[
+            PlanStep(title=step.title, done=step.done, position=index)
+            for index, step in enumerate(payload.plan)
+        ],
+    )
+    session.add(goal)
+    session.commit()
+    session.refresh(goal)
+    return GoalRead.from_goal(goal, today)
+
+
+@router.get("/{goal_id}", response_model=GoalRead)
+def get_goal(goal_id: int, session: SessionDep, user: CurrentUserDep, today: TodayDep):
+    return GoalRead.from_goal(get_goal_or_404(session, goal_id, user), today)
+
+
+@router.patch("/{goal_id}", response_model=GoalRead)
+def update_goal(
+    goal_id: int, payload: GoalUpdate, session: SessionDep, user: CurrentUserDep, today: TodayDep
+):
+    """Atualiza só os campos enviados (ex.: a percentagem de progresso)."""
+    goal = get_goal_or_404(session, goal_id, user)
+    changes = payload.changes()
+    changes.pop("plan", None)
+    for field, value in changes.items():
+        setattr(goal, field, value)
+    if payload.plan is not None:
+        replace_plan(goal, payload.plan)
+    if goal.target_date < goal.start_date:
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, DATES_ORDER_ERROR)
+
+    session.commit()
+    session.refresh(goal)
+    return GoalRead.from_goal(goal, today)
+
+
+@router.delete("/{goal_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_goal(goal_id: int, session: SessionDep, user: CurrentUserDep):
+    session.delete(get_goal_or_404(session, goal_id, user))
+    session.commit()
+
+
+@router.post("/{goal_id}/evaluation", response_model=GoalRead)
+def evaluate_goal(
+    goal_id: int,
+    payload: EvaluationCreate,
+    session: SessionDep,
+    user: CurrentUserDep,
+    today: TodayDep,
+):
+    """Regista se o objetivo foi sucedido ou não. Fica no histórico com a data de hoje."""
+    goal = get_goal_or_404(session, goal_id, user)
+    if goal.outcome is not None:
+        raise HTTPException(status.HTTP_409_CONFLICT, "Este objetivo já foi avaliado.")
+
+    goal.outcome = payload.outcome
+    goal.outcome_note = payload.note
+    goal.closed_at = today
+    session.commit()
+    session.refresh(goal)
+    return GoalRead.from_goal(goal, today)
+
+
+@router.delete("/{goal_id}/evaluation", response_model=GoalRead)
+def reopen_goal(goal_id: int, session: SessionDep, user: CurrentUserDep, today: TodayDep):
+    """Anula a avaliação (ex.: se foi registada por engano)."""
+    goal = get_goal_or_404(session, goal_id, user)
+    goal.outcome = None
+    goal.outcome_note = None
+    goal.closed_at = None
+    session.commit()
+    session.refresh(goal)
+    return GoalRead.from_goal(goal, today)

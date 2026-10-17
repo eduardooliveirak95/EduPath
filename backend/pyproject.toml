@@ -1,0 +1,41 @@
+[project]
+name = "edupath-backend"
+version = "0.1.0"
+description = "API do EduPath: objetivos pessoais, planos e histórico de resultados."
+requires-python = ">=3.12"
+dependencies = [
+    "fastapi>=0.143",
+    "uvicorn[standard]>=0.54",
+    "sqlalchemy>=2.1",
+    "pydantic>=2.14",
+    "pydantic-settings>=2.16",
+    "psycopg[binary]>=3.3",
+    # Migrações do esquema da base de dados.
+    "alembic>=1.16",
+    # Passwords guardadas com hash (Argon2id).
+    "argon2-cffi>=25.1",
+    # Tokens de sessão (e, mais tarde, validar os tokens de um fornecedor de login).
+    "pyjwt>=2.10",
+    # Fusos horários também em Windows, onde o sistema não os inclui.
+    "tzdata>=2025.2",
+]
+
+[dependency-groups]
+dev = [
+    "pytest>=9.1",
+    "httpx2>=2.13",
+    "ruff>=0.17",
+]
+
+[tool.uv]
+package = false
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP", "SIM"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

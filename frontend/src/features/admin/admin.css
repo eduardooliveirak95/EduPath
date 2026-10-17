@@ -47,6 +47,24 @@
   font-size: 0.8rem;
 }
 
+/* Confirmação de remover uma conta, por baixo dos dados dela */
+.account-row__confirm {
+  display: grid;
+  flex-basis: 100%;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: var(--radius-sm);
+  background: var(--danger-soft);
+  font-size: 0.85rem;
+}
+
+.account-row__actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
 /* Convites */
 .invites {
   display: grid;

@@ -168,6 +168,9 @@ export const api = {
   // Só para o administrador (as outras contas recebem 403).
   listAccounts: () => request<AdminUser[]>('/api/admin/users'),
 
+  /** Apaga a conta e tudo o que é dela (objetivos e passos). */
+  deleteAccount: (userId: number) => request<void>(`/api/admin/users/${userId}`, 'DELETE'),
+
   listInvites: () => request<Invite[]>('/api/invites'),
 
   createInvite: () => request<Invite>('/api/invites', 'POST'),

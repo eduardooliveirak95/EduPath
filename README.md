@@ -17,6 +17,8 @@ O que tem:
 
 Funciona no computador e no telemóvel, em tema claro ou escuro.
 
+No telemóvel também se pode instalar como uma app, com ícone no ecrã principal e sem a barra do browser. No Android, no Chrome, é no menu, em "Adicionar ao ecrã principal" ou "Instalar app". No iPhone, no Safari, é no botão de partilhar, em "Adicionar ao ecrã principal". A app atualiza-se sozinha e, sem rede, abre na mesma e avisa que não consegue chegar aos dados.
+
 Feito com React e TypeScript no site, Python (FastAPI) na API e PostgreSQL na base de dados.
 
 Projeto pessoal, ainda em desenvolvimento.

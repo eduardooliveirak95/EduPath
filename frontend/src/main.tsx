@@ -9,3 +9,11 @@ createRoot(document.getElementById('root')!).render(
     <App />
   </StrictMode>,
 )
+
+// Para o site se poder instalar como app (public/sw.js). Só no build: em desenvolvimento,
+// o service worker atrapalhava o recarregamento automático do Vite.
+if (import.meta.env.PROD && 'serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('/sw.js').catch(() => {})
+  })
+}

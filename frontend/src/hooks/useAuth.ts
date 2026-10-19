@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { auth } from '../api/client'
 import type { NewAccount, User } from '../types'
+import { onResume } from '../utils/resume'
 
 const SESSION_ENDED = 'A tua sessão terminou. Entra outra vez.'
 
@@ -18,17 +19,21 @@ export function useAuth() {
     [],
   )
 
-  // Ao abrir o site com sessão iniciada, renova o token: assim só expira se a app
-  // ficar sem ser usada durante o prazo da sessão. Se o token já não for válido,
-  // o onSessionEnded trata disso; outros erros (ex.: sem rede) ficam para a próxima.
+  // Ao abrir o site com sessão iniciada, e ao voltar à app depois de algum tempo, renova o
+  // token: assim só expira se a app ficar sem ser usada durante o prazo da sessão. Se o token
+  // já não for válido, o onSessionEnded trata disso; outros erros (ex.: sem rede) ficam para a próxima.
   useEffect(() => {
-    if (!auth.currentUser()) return
-    auth.refresh().then(
-      (fresh) => {
-        if (fresh) setUser(fresh)
-      },
-      () => {},
-    )
+    const renew = () => {
+      if (!auth.currentUser()) return
+      auth.refresh().then(
+        (fresh) => {
+          if (fresh) setUser(fresh)
+        },
+        () => {},
+      )
+    }
+    renew()
+    return onResume(renew)
   }, [])
 
   const enter = (next: User) => {

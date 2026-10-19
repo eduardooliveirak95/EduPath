@@ -17,6 +17,7 @@ import { useGoals } from './hooks/useGoals'
 import { useNotifications } from './hooks/useNotifications'
 import type { PageId, User } from './types'
 import { toISODate } from './utils/date'
+import { onResume } from './utils/resume'
 import './components/layout/layout.css'
 
 export default function App() {
@@ -44,12 +45,15 @@ function Workspace({ user, account, onSignOut }: WorkspaceProps) {
   // Pesquisa da barra de topo: mostra os resultados na página Objetivos.
   const [query, setQuery] = useState('')
   const [goalDialog, setGoalDialog] = useState<GoalDialogState>(null)
-  const [today] = useState(() => toISODate(new Date()))
+  const [today, setToday] = useState(() => toISODate(new Date()))
   const { goals, loadState, reload, actionError, dismissActionError, createGoal, updateGoal, deleteGoal, ...actions } =
     useGoals()
   const { notifications, unseenIds, markAllSeen } = useNotifications(goals, today, user.id, loadState.kind === 'ready')
   // Se o objetivo deixar de existir (ex.: foi apagado), o formulário fecha.
   const editingGoal = goalDialog?.mode === 'edit' ? goals.find((goal) => goal.id === goalDialog.goalId) : undefined
+
+  // Ao voltar à app, o dia pode já ser outro (os prazos e as notificações dependem dele).
+  useEffect(() => onResume(() => setToday(toISODate(new Date()))), [])
 
   // Botões "voltar" e "avançar" do browser.
   useEffect(() => {

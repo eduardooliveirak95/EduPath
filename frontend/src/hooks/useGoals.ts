@@ -1,6 +1,7 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { api, errorMessage } from '../api/client'
 import type { Goal, GoalChanges, GoalOutcome, NewGoal, PlanStep } from '../types'
+import { onResume } from '../utils/resume'
 
 type LoadState = { kind: 'loading' } | { kind: 'error'; message: string } | { kind: 'ready' }
 
@@ -15,6 +16,8 @@ export function useGoals() {
   const [actionError, setActionError] = useState<string | null>(null)
 
   const [reloadKey, setReloadKey] = useState(0)
+  // Conta as alterações feitas nesta app, para uma lista pedida antes delas não as desfazer.
+  const changeCount = useRef(0)
 
   useEffect(() => {
     let cancelled = false
@@ -33,16 +36,40 @@ export function useGoals() {
     }
   }, [reloadKey])
 
+  // Ao voltar à app, pede a lista outra vez, sem o "A carregar…". Se falhar (ex.: sem rede),
+  // fica a que havia. Se entretanto mudou alguma coisa aqui, a lista pedida já vem atrasada.
+  useEffect(
+    () =>
+      onResume(() => {
+        const countBefore = changeCount.current
+        api.listGoals().then(
+          (result) => {
+            if (changeCount.current !== countBefore) return
+            setGoals(result)
+            setLoadState({ kind: 'ready' })
+          },
+          () => {},
+        )
+      }),
+    [],
+  )
+
   const reload = () => {
     setLoadState({ kind: 'loading' })
     setReloadKey((key) => key + 1)
   }
 
+  /** Todas as alterações à lista passam por aqui (ver `changeCount`). */
+  const changeGoals = (change: (current: Goal[]) => Goal[]) => {
+    changeCount.current += 1
+    setGoals(change)
+  }
+
   const replaceGoal = (updated: Goal) =>
-    setGoals((current) => current.map((goal) => (goal.id === updated.id ? updated : goal)))
+    changeGoals((current) => current.map((goal) => (goal.id === updated.id ? updated : goal)))
 
   const updatePlan = (goalId: number, change: (plan: PlanStep[]) => PlanStep[]) =>
-    setGoals((current) => current.map((goal) => (goal.id === goalId ? { ...goal, plan: change(goal.plan) } : goal)))
+    changeGoals((current) => current.map((goal) => (goal.id === goalId ? { ...goal, plan: change(goal.plan) } : goal)))
 
   /** Corre uma ação; se falhar, guarda a mensagem para o aviso global. */
   const run = async (action: () => Promise<void>) => {
@@ -64,18 +91,18 @@ export function useGoals() {
     // Estas três lançam ApiError se falharem, para o formulário mostrar o erro.
     createGoal: async (input: NewGoal) => {
       const goal = await api.createGoal(input)
-      setGoals((current) => [...current, goal].sort(byTargetDate))
+      changeGoals((current) => [...current, goal].sort(byTargetDate))
     },
 
     updateGoal: async (goalId: number, changes: GoalChanges) => {
       const updated = await api.updateGoal(goalId, changes)
       // A data limite pode ter mudado, por isso volta a ordenar.
-      setGoals((current) => current.map((goal) => (goal.id === updated.id ? updated : goal)).sort(byTargetDate))
+      changeGoals((current) => current.map((goal) => (goal.id === updated.id ? updated : goal)).sort(byTargetDate))
     },
 
     deleteGoal: async (goalId: number) => {
       await api.deleteGoal(goalId)
-      setGoals((current) => current.filter((goal) => goal.id !== goalId))
+      changeGoals((current) => current.filter((goal) => goal.id !== goalId))
     },
 
     evaluateGoal: (goalId: number, outcome: GoalOutcome, note?: string) =>

@@ -8,7 +8,7 @@ O que tem:
 
 - painel com os objetivos em curso, os próximos passos e os prazos que estão a chegar
 - planos passo a passo para cada objetivo
-- avaliação no fim do prazo, com uma nota sobre como correu
+- avaliação no fim do prazo, com uma nota sobre como correu, que se pode mudar depois
 - histórico organizado por mês, com a taxa de sucesso geral e por categoria
 - notificações dos prazos a chegar e dos objetivos por avaliar
 - pesquisa, e filtros por estado e por categoria

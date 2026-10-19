@@ -102,6 +102,12 @@ def update_goal(
     goal = get_goal_or_404(session, goal_id, user)
     changes = payload.changes()
     changes.pop("plan", None)
+    if "outcome_note" in changes:
+        if goal.outcome is None:
+            raise HTTPException(
+                status.HTTP_409_CONFLICT, "Só os objetivos já avaliados têm nota do resultado."
+            )
+        changes["outcome_note"] = changes["outcome_note"] or None
     for field, value in changes.items():
         setattr(goal, field, value)
     if payload.plan is not None:

@@ -47,6 +47,7 @@ export function GoalDialog({ today, goal, onClose, onCreate, onUpdate, onDelete 
 
   const [title, setTitle] = useState(goal?.title ?? '')
   const [description, setDescription] = useState(goal?.description ?? '')
+  const [outcomeNote, setOutcomeNote] = useState(goal?.outcomeNote ?? '')
   const [category, setCategory] = useState<Category>(goal?.category ?? 'pessoal')
   const [startDate, setStartDate] = useState(goal?.startDate ?? today)
   const [targetDate, setTargetDate] = useState(() => goal?.targetDate ?? addDays(today, DEFAULT_DURATION_DAYS))
@@ -93,10 +94,15 @@ export function GoalDialog({ today, goal, onClose, onCreate, onUpdate, onDelete 
     const plan = steps.map((step) => ({ ...step, title: step.title.trim() })).filter((step) => step.title)
     try {
       if (isEditing) {
+        // A nota só vai se mudou: se o objetivo foi avaliado noutro lado com o formulário
+        // aberto, a caixa ainda vazia não apaga a nota que entretanto foi escrita.
+        const note = outcomeNote.trim()
+        const noteChanged = goal.outcome !== null && note !== (goal.outcomeNote ?? '')
         await onUpdate(goal.id, {
           ...fields,
           description: description.trim() || null,
           plan: plan.map(({ id, title, done }) => ({ id, title, done })),
+          ...(noteChanged && { outcomeNote: note || null }),
         })
       } else {
         await onCreate({
@@ -175,6 +181,27 @@ export function GoalDialog({ today, goal, onClose, onCreate, onUpdate, onDelete 
               rows={2}
             />
           </label>
+
+          {goal?.outcome && (
+            <label className="field">
+              <span className="field__label">
+                Nota do resultado{' '}
+                <span className="field__optional">
+                  ({goal.outcome === 'sucedido' ? 'sucedido' : 'não sucedido'}; opcional)
+                </span>
+              </span>
+              <textarea
+                className="input"
+                value={outcomeNote}
+                onChange={(e) => setOutcomeNote(e.target.value)}
+                placeholder={
+                  goal.outcome === 'sucedido' ? 'O que te ajudou a conseguir?' : 'O que faltou? O que farias diferente?'
+                }
+                maxLength={2000}
+                rows={2}
+              />
+            </label>
+          )}
 
           <fieldset className="field">
             <legend className="field__label">Categoria</legend>

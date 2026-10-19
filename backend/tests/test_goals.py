@@ -247,6 +247,53 @@ def test_reopen_clears_evaluation(client, create_goal):
     assert reopened["closedAt"] is None
 
 
+def test_update_changes_the_evaluation_note(client, create_goal):
+    goal = create_goal()
+    url = f"/api/goals/{goal['id']}"
+    evaluated = client.post(f"{url}/evaluation", json={"outcome": "sucedido", "note": "Ok"}).json()
+
+    updated = client.patch(url, json={"outcomeNote": "  Correu melhor do que esperava.  "}).json()
+
+    assert updated["outcomeNote"] == "Correu melhor do que esperava."
+    unchanged = ("outcome", "status", "closedAt", "title", "plan")
+    assert {k: updated[k] for k in unchanged} == {k: evaluated[k] for k in unchanged}
+    # Sem outcomeNote no pedido, a nota fica como está.
+    assert client.patch(url, json={"progress": 80}).json()["outcomeNote"] == (
+        "Correu melhor do que esperava."
+    )
+
+
+@pytest.mark.parametrize("note", [None, "", "   "])
+def test_update_clears_the_evaluation_note(client, create_goal, note):
+    goal = create_goal()
+    url = f"/api/goals/{goal['id']}"
+    client.post(f"{url}/evaluation", json={"outcome": "nao_sucedido", "note": "Ok"})
+
+    updated = client.patch(url, json={"outcomeNote": note}).json()
+
+    assert updated["outcomeNote"] is None
+    assert updated["outcome"] == "nao_sucedido"
+
+
+def test_only_evaluated_goals_have_a_note(client, create_goal):
+    goal = create_goal()
+    url = f"/api/goals/{goal['id']}"
+
+    response = client.patch(url, json={"progress": 50, "outcomeNote": "Ainda não acabou."})
+
+    assert response.status_code == 409
+    assert client.get(url).json() == goal
+
+
+def test_evaluation_note_has_a_maximum_length(client, create_goal):
+    goal = create_goal()
+    url = f"/api/goals/{goal['id']}"
+    client.post(f"{url}/evaluation", json={"outcome": "sucedido", "note": "Ok"})
+
+    assert client.patch(url, json={"outcomeNote": "x" * 2001}).status_code == 422
+    assert client.get(url).json()["outcomeNote"] == "Ok"
+
+
 def test_sample_goals_cover_every_status(client, user, session_factory):
     with session_factory() as session:
         session.add_all(build_sample_goals(TODAY, user.id))

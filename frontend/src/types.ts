@@ -54,6 +54,8 @@ export interface GoalChanges {
   progress?: number
   /** Substitui o plano todo: passos com `id` mantêm-se, sem `id` são novos, os que faltam são apagados. */
   plan?: { id?: number; title: string; done: boolean }[]
+  /** Nota da avaliação: só em objetivos já avaliados; `null` apaga-a. */
+  outcomeNote?: string | null
 }
 
 export interface User {

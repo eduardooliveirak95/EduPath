@@ -111,6 +111,10 @@ class GoalUpdate(ApiModel):
             "os sem id são novos e os que faltarem são apagados. A ordem da lista é a do plano."
         ),
     )
+    outcome_note: LongText | None = Field(
+        default=None,
+        description="Nota da avaliação. Só em objetivos já avaliados; vazia ou null apaga-a.",
+    )
 
     @model_validator(mode="after")
     def _no_nulls(self) -> Self:

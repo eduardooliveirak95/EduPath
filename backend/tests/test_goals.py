@@ -181,13 +181,73 @@ def test_update_rejects_invalid_plan_and_changes_nothing(client, create_goal, pr
 
 @pytest.mark.parametrize(
     "fields",
-    [{"title": None}, {"progress": None}, {"progress": 150}, {"targetDate": "2026-06-01"}],
+    [
+        {"title": None},
+        {"progress": None},
+        {"progress": 150},
+        {"progressFromSteps": None},
+        {"targetDate": "2026-06-01"},
+    ],
 )
 def test_update_rejects_invalid_data(client, create_goal, fields):
     goal = create_goal()
     response = client.patch(f"/api/goals/{goal['id']}", json=fields)
     assert response.status_code == 422
     assert client.get(f"/api/goals/{goal['id']}").json()["progress"] == goal["progress"]
+
+
+# Progresso calculado pelos passos
+
+
+def test_progress_from_steps_is_the_share_of_steps_done(client, create_goal):
+    goal = create_goal(
+        progress=40,
+        progressFromSteps=True,
+        plan=[{"title": "A", "done": True}, {"title": "B"}, {"title": "C"}],
+    )
+
+    assert goal["progressFromSteps"] is True
+    assert goal["progress"] == 33
+    assert client.get("/api/goals").json()[0]["progress"] == 33
+
+
+def test_progress_from_steps_follows_the_steps(client, create_goal):
+    goal = create_goal(progressFromSteps=True, plan=[{"title": "A"}, {"title": "B"}])
+    url = f"/api/goals/{goal['id']}"
+    a, b = (step["id"] for step in goal["plan"])
+    assert goal["progress"] == 0
+
+    client.patch(f"{url}/steps/{a}", json={"done": True})
+    assert client.get(url).json()["progress"] == 50
+
+    client.post(f"{url}/steps", json={"title": "C", "done": True})
+    assert client.get(url).json()["progress"] == 67
+
+    client.delete(f"{url}/steps/{b}")
+    assert client.get(url).json()["progress"] == 100
+
+    # Sem passos, fica em 0.
+    assert client.patch(url, json={"plan": []}).json()["progress"] == 0
+
+
+def test_progress_from_steps_rounds_half_up(create_goal):
+    # 1 de 8 é 12,5%: dá 13, como o Math.round do site (o round do Python dava 12).
+    plan = [{"title": f"Passo {n}", "done": n == 1} for n in range(1, 9)]
+    assert create_goal(progressFromSteps=True, plan=plan)["progress"] == 13
+
+
+def test_turning_off_progress_from_steps_brings_back_the_chosen_progress(client, create_goal):
+    goal = create_goal(progress=40, plan=[{"title": "A", "done": True}])
+    url = f"/api/goals/{goal['id']}"
+    assert (goal["progressFromSteps"], goal["progress"]) == (False, 40)
+
+    on = client.patch(url, json={"progressFromSteps": True}).json()
+    assert (on["progressFromSteps"], on["progress"]) == (True, 100)
+    # A percentagem enviada fica guardada, mas não aparece enquanto vier dos passos.
+    assert client.patch(url, json={"progress": 70}).json()["progress"] == 100
+
+    off = client.patch(url, json={"progressFromSteps": False}).json()
+    assert (off["progressFromSteps"], off["progress"]) == (False, 70)
 
 
 def test_delete_goal_also_deletes_its_plan(client, create_goal):

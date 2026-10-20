@@ -97,6 +97,12 @@
   background: var(--surface-2);
   color: var(--text);
 }
+.ghost-btn:disabled {
+  background: none;
+  color: var(--text-subtle);
+  opacity: 0.4;
+  cursor: default;
+}
 
 /* Campos de formulário */
 .field {

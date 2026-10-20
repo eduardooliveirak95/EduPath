@@ -111,10 +111,11 @@ interface HistoryPageProps {
   goals: Goal[]
   actions: GoalActions
   onEditGoal: (goalId: number) => void
+  onRepeatGoal: (goalId: number) => void
 }
 
 /** Os objetivos já avaliados, com o resultado, agrupados por mês. */
-export function HistoryPage({ goals, actions, onEditGoal }: HistoryPageProps) {
+export function HistoryPage({ goals, actions, onEditGoal, onRepeatGoal }: HistoryPageProps) {
   const [outcome, setOutcome] = useState<GoalOutcome | 'todos'>('todos')
   const [category, setCategory] = useState<Category | 'todas'>('todas')
 
@@ -193,6 +194,7 @@ export function HistoryPage({ goals, actions, onEditGoal }: HistoryPageProps) {
                           goal={goal}
                           onEdit={onEditGoal}
                           onReopen={actions.reopenGoal}
+                          onRepeat={onRepeatGoal}
                           detailed
                         />
                       ))}

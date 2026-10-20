@@ -133,7 +133,10 @@ class Goal(Base):
     category: Mapped[Category] = mapped_column(_string_enum(Category))
     start_date: Mapped[date]
     target_date: Mapped[date]
+    # Percentagem escolhida à mão. Com `progress_from_steps`, a que se vê é a dos passos
+    # feitos (`current_progress`), e esta fica guardada para quando deixar de ser.
     progress: Mapped[int] = mapped_column(default=0)
+    progress_from_steps: Mapped[bool] = mapped_column(default=False, server_default=false())
     outcome: Mapped[Outcome | None] = mapped_column(_string_enum(Outcome))
     outcome_note: Mapped[str | None] = mapped_column(Text)
     closed_at: Mapped[date | None]
@@ -153,6 +156,21 @@ class Goal(Base):
         if self.outcome is not None:
             return GoalStatus(self.outcome.value)
         return GoalStatus.POR_AVALIAR if self.target_date < today else GoalStatus.EM_CURSO
+
+    def current_progress(self) -> int:
+        """Percentagem do objetivo: a dos passos feitos, se é calculada por eles, ou a escolhida."""
+        return steps_progress(self.plan) if self.progress_from_steps else self.progress
+
+
+def steps_progress(plan: list["PlanStep"]) -> int:
+    """Passos feitos em percentagem, arredondada a meio para cima (como o Math.round do site).
+
+    Sem passos, 0. A mesma conta está em `stepsProgress` (frontend/src/utils/goals.ts).
+    """
+    if not plan:
+        return 0
+    done = sum(step.done for step in plan)
+    return (done * 100 + len(plan) // 2) // len(plan)
 
 
 class PlanStep(Base):

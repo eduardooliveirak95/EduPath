@@ -17,6 +17,7 @@ import { useGoals } from './hooks/useGoals'
 import { useNotifications } from './hooks/useNotifications'
 import type { PageId, User } from './types'
 import { toISODate } from './utils/date'
+import { repeatGoal } from './utils/goals'
 import { onResume } from './utils/resume'
 import './components/layout/layout.css'
 
@@ -33,8 +34,8 @@ interface WorkspaceProps {
   onSignOut: () => void
 }
 
-/** Formulário aberto: um objetivo novo ou a edição de um que já existe. */
-type GoalDialogState = { mode: 'new' } | { mode: 'edit'; goalId: number } | null
+/** Formulário aberto: um objetivo novo, a edição de um que já existe, ou um novo igual a outro. */
+type GoalDialogState = { mode: 'new' } | { mode: 'edit' | 'repeat'; goalId: number } | null
 
 /** A app com sessão iniciada: navegação, páginas e ações sobre os objetivos. */
 function Workspace({ user, account, onSignOut }: WorkspaceProps) {
@@ -50,7 +51,10 @@ function Workspace({ user, account, onSignOut }: WorkspaceProps) {
     useGoals()
   const { notifications, unseenIds, markAllSeen } = useNotifications(goals, today, user.id, loadState.kind === 'ready')
   // Se o objetivo deixar de existir (ex.: foi apagado), o formulário fecha.
-  const editingGoal = goalDialog?.mode === 'edit' ? goals.find((goal) => goal.id === goalDialog.goalId) : undefined
+  const dialogGoal =
+    goalDialog && goalDialog.mode !== 'new' ? goals.find((goal) => goal.id === goalDialog.goalId) : undefined
+  const editingGoal = goalDialog?.mode === 'edit' ? dialogGoal : undefined
+  const repeatedGoal = goalDialog?.mode === 'repeat' ? dialogGoal : undefined
 
   // Ao voltar à app, o dia pode já ser outro (os prazos e as notificações dependem dele).
   useEffect(() => onResume(() => setToday(toISODate(new Date()))), [])
@@ -85,6 +89,8 @@ function Workspace({ user, account, onSignOut }: WorkspaceProps) {
 
   const openEditGoal = (goalId: number) => setGoalDialog({ mode: 'edit', goalId })
 
+  const openRepeatGoal = (goalId: number) => setGoalDialog({ mode: 'repeat', goalId })
+
   const renderPage = () => {
     if (page === 'definicoes') return <SettingsPage user={user} {...account} />
     if (page === 'administracao') return <AdminPage />
@@ -118,6 +124,7 @@ function Workspace({ user, account, onSignOut }: WorkspaceProps) {
             onClearQuery={() => setQuery('')}
             onNewGoal={openNewGoal}
             onEditGoal={openEditGoal}
+            onRepeatGoal={openRepeatGoal}
           />
         )
       case 'planos':
@@ -125,7 +132,9 @@ function Workspace({ user, account, onSignOut }: WorkspaceProps) {
           <PlansPage goals={goals} today={today} actions={actions} onNewGoal={openNewGoal} onEditGoal={openEditGoal} />
         )
       case 'historico':
-        return <HistoryPage goals={goals} actions={actions} onEditGoal={openEditGoal} />
+        return (
+          <HistoryPage goals={goals} actions={actions} onEditGoal={openEditGoal} onRepeatGoal={openRepeatGoal} />
+        )
       default:
         return (
           <Dashboard
@@ -174,11 +183,17 @@ function Workspace({ user, account, onSignOut }: WorkspaceProps) {
         <main className="app__content">{renderPage()}</main>
       </div>
 
-      {(goalDialog?.mode === 'new' || editingGoal) && (
+      {(goalDialog?.mode === 'new' || dialogGoal) && (
         <GoalDialog
-          key={editingGoal?.id ?? 'novo'}
+          key={dialogGoal ? `${goalDialog?.mode}-${dialogGoal.id}` : 'novo'}
           today={today}
           goal={editingGoal}
+          draft={
+            repeatedGoal && {
+              goal: repeatGoal(repeatedGoal, today),
+              heading: repeatedGoal.status === 'nao_sucedido' ? 'Tentar outra vez' : 'Repetir objetivo',
+            }
+          }
           onClose={() => setGoalDialog(null)}
           onCreate={createGoal}
           onUpdate={updateGoal}

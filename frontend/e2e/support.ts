@@ -45,6 +45,18 @@ export async function openFromSidebar(page: Page, name: string) {
   await page.getByRole('complementary', { name: 'Navegação principal' }).getByRole('button', { name, exact: true }).click()
 }
 
+/** O dia de hoje (AAAA-MM-DD) no fuso dos testes, como o browser o vê. */
+export function today(): string {
+  return new Intl.DateTimeFormat('sv-SE', { timeZone: API_ENV.TIMEZONE }).format(new Date())
+}
+
+/** Uma data AAAA-MM-DD mais N dias. */
+export function addDays(iso: string, days: number): string {
+  const date = new Date(`${iso}T00:00:00Z`)
+  date.setUTCDate(date.getUTCDate() + days)
+  return date.toISOString().slice(0, 10)
+}
+
 /** O token da sessão com que o browser entrou, para preparar dados pela API. */
 export async function sessionToken(page: Page): Promise<string> {
   return page.evaluate(() => JSON.parse(localStorage.getItem('edupath.session') ?? '{}').token)

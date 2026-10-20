@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test'
-import { openFromSidebar, resetData, signIn } from './support.ts'
+import { addDays, openFromSidebar, resetData, signIn, today } from './support.ts'
 
 test.beforeEach(async ({ page }) => {
   resetData()
@@ -30,4 +30,29 @@ test('avalia um objetivo, muda a nota e anula a avaliação', async ({ page }) =
   await expect(page.getByText('Menos 6 kg, afinal.')).toBeHidden()
   await openFromSidebar(page, 'Painel')
   await expect(page.locator('.review-item').filter({ hasText: 'Perder 5 kg' })).toBeVisible()
+})
+
+test('tenta outra vez um objetivo não sucedido, com datas novas', async ({ page }) => {
+  await openFromSidebar(page, 'Histórico')
+  await page.getByRole('button', { name: 'Tentar outra vez "Deixar de fumar"' }).click()
+  const dialog = page.getByRole('dialog', { name: 'Tentar outra vez' })
+  await expect(dialog.getByLabel('Objetivo')).toHaveValue('Deixar de fumar')
+  await expect(dialog.getByLabel('Passo 1', { exact: true })).toHaveValue('Marcar consulta de cessação')
+  await expect(dialog.getByLabel('Passo 2', { exact: true })).toHaveValue('30 dias sem fumar')
+  // Começa hoje e dura o mesmo que o original (125 dias).
+  await expect(dialog.getByLabel('Início')).toHaveValue(today())
+  await expect(dialog.getByLabel('Data limite')).toHaveValue(addDays(today(), 125))
+  await dialog.getByRole('button', { name: 'Criar objetivo' }).click()
+  await expect(dialog).toBeHidden()
+
+  // O original fica no histórico; o novo está em curso.
+  await expect(page.getByText('Recaída ao fim de 2 meses.', { exact: false })).toBeVisible()
+  await openFromSidebar(page, 'Objetivos')
+  await page.getByRole('button', { name: /^Em curso/ }).click()
+  await expect(page.getByRole('heading', { name: 'Deixar de fumar' })).toHaveCount(1)
+
+  // Nos que correram bem, o botão chama-se "Repetir".
+  await page.getByRole('button', { name: /^Todos/ }).click()
+  await page.getByRole('button', { name: 'Repetir "Viagem ao Japão"' }).click()
+  await expect(page.getByRole('dialog', { name: 'Repetir objetivo' })).toBeVisible()
 })

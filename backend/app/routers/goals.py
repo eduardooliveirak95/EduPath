@@ -78,6 +78,7 @@ def create_goal(payload: GoalCreate, session: SessionDep, user: CurrentUserDep, 
         start_date=start_date,
         target_date=payload.target_date,
         progress=payload.progress,
+        progress_from_steps=payload.progress_from_steps,
         plan=[
             PlanStep(title=step.title, done=step.done, position=index)
             for index, step in enumerate(payload.plan)

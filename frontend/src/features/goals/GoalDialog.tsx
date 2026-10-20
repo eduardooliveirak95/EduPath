@@ -1,13 +1,16 @@
 import { useEffect, useRef, useState, type FormEvent, type KeyboardEvent } from 'react'
 import { flushSync } from 'react-dom'
-import { Plus, Trash2, X } from 'lucide-react'
+import { ChevronDown, ChevronUp, Plus, Trash2, X } from 'lucide-react'
 import { ApiError } from '../../api/client'
 import { CATEGORIES } from '../../data/categories'
 import type { Category, Goal, GoalChanges, NewGoal } from '../../types'
 import { addDays } from '../../utils/date'
+import { stepsProgress } from '../../utils/goals'
 import './goal-form.css'
 
 const DEFAULT_DURATION_DAYS = 30
+/** Intervalo da barra do progresso escolhido à mão. */
+const PROGRESS_STEP = 5
 
 /** Passo no formulário. `id` só existe nos passos que já estão guardados. */
 interface StepDraft {
@@ -17,9 +20,10 @@ interface StepDraft {
   done: boolean
 }
 
-function initialSteps(goal: Goal | undefined): StepDraft[] {
-  if (!goal?.plan.length) return [{ key: 'novo-0', title: '', done: false }]
-  return goal.plan.map(({ id, title, done }) => ({ key: `passo-${id}`, id, title, done }))
+function initialSteps(goal: Goal | undefined, draft: NewGoal | undefined): StepDraft[] {
+  if (goal?.plan.length) return goal.plan.map(({ id, title, done }) => ({ key: `passo-${id}`, id, title, done }))
+  if (draft?.plan.length) return draft.plan.map(({ title }, index) => ({ key: `copia-${index}`, title, done: false }))
+  return [{ key: 'novo-0', title: '', done: false }]
 }
 
 function errorMessage(caught: unknown, fallback: string): string {
@@ -30,6 +34,8 @@ interface GoalDialogProps {
   today: string
   /** Objetivo a editar. Sem ele, o formulário cria um objetivo novo. */
   goal?: Goal
+  /** Objetivo novo já preenchido (ex.: para repetir um que já foi avaliado), e o título do formulário. */
+  draft?: { goal: NewGoal; heading: string }
   onClose: () => void
   onCreate: (goal: NewGoal) => Promise<void>
   onUpdate: (goalId: number, changes: GoalChanges) => Promise<void>
@@ -37,22 +43,30 @@ interface GoalDialogProps {
 }
 
 /** Formulário para criar ou editar um objetivo. Montado só quando está aberto, para começar sempre limpo. */
-export function GoalDialog({ today, goal, onClose, onCreate, onUpdate, onDelete }: GoalDialogProps) {
+export function GoalDialog({ today, goal, draft, onClose, onCreate, onUpdate, onDelete }: GoalDialogProps) {
   const isEditing = goal !== undefined
+  const initial = isEditing ? undefined : draft?.goal
   const dialogRef = useRef<HTMLDialogElement>(null)
   const titleRef = useRef<HTMLInputElement>(null)
   const stepRefs = useRef<(HTMLInputElement | null)[]>([])
+  const moveRefs = useRef(new Map<string, HTMLButtonElement | null>())
   const keepDeleteRef = useRef<HTMLButtonElement>(null)
   const nextStepKey = useRef(1)
 
-  const [title, setTitle] = useState(goal?.title ?? '')
-  const [description, setDescription] = useState(goal?.description ?? '')
+  const [title, setTitle] = useState(goal?.title ?? initial?.title ?? '')
+  const [description, setDescription] = useState(goal?.description ?? initial?.description ?? '')
   const [outcomeNote, setOutcomeNote] = useState(goal?.outcomeNote ?? '')
-  const [category, setCategory] = useState<Category>(goal?.category ?? 'pessoal')
-  const [startDate, setStartDate] = useState(goal?.startDate ?? today)
-  const [targetDate, setTargetDate] = useState(() => goal?.targetDate ?? addDays(today, DEFAULT_DURATION_DAYS))
-  const [progress, setProgress] = useState(goal?.progress ?? 0)
-  const [steps, setSteps] = useState(() => initialSteps(goal))
+  const [category, setCategory] = useState<Category>(goal?.category ?? initial?.category ?? 'pessoal')
+  const [startDate, setStartDate] = useState(goal?.startDate ?? initial?.startDate ?? today)
+  const [targetDate, setTargetDate] = useState(
+    () => goal?.targetDate ?? initial?.targetDate ?? addDays(today, DEFAULT_DURATION_DAYS),
+  )
+  const [progress, setProgress] = useState(goal?.progress ?? initial?.progress ?? 0)
+  // Nos objetivos novos, o progresso vem dos passos, a não ser que se escolha o contrário.
+  const [progressFromSteps, setProgressFromSteps] = useState(
+    goal?.progressFromSteps ?? initial?.progressFromSteps ?? true,
+  )
+  const [steps, setSteps] = useState(() => initialSteps(goal, initial))
   const [saving, setSaving] = useState(false)
   const [confirmingDelete, setConfirmingDelete] = useState(false)
   const [deleting, setDeleting] = useState(false)
@@ -78,6 +92,17 @@ export function GoalDialog({ today, goal, onClose, onCreate, onUpdate, onDelete 
   const removeStep = (index: number) =>
     setSteps((current) => (current.length === 1 ? [blankStep()] : current.toSpliced(index, 1)))
 
+  const moveStep = (index: number, offset: -1 | 1) => {
+    const target = index + offset
+    const { key } = steps[index]
+    flushSync(() => setSteps((current) => current.with(index, current[target]).with(target, current[index])))
+    // O passo mudou de lugar e o browser pode tirar-lhe o foco. Fica no mesmo botão,
+    // ou no outro se este deixou de servir (o passo chegou ao início ou ao fim).
+    const atEdge = target === 0 || target === steps.length - 1
+    const direction = atEdge ? -offset : offset
+    moveRefs.current.get(`${key}:${direction}`)?.focus()
+  }
+
   // Enter num passo cria o passo seguinte, em vez de submeter o formulário.
   const onStepKeyDown = (event: KeyboardEvent<HTMLInputElement>, index: number) => {
     if (event.key !== 'Enter') return
@@ -85,13 +110,27 @@ export function GoalDialog({ today, goal, onClose, onCreate, onUpdate, onDelete 
     addStep(index)
   }
 
+  // Passos sem texto são ignorados (ex.: a linha vazia que o formulário mostra sempre).
+  const filledSteps = steps.filter((step) => step.title.trim())
+  const doneCount = filledSteps.filter((step) => step.done).length
+  const stepsHint =
+    filledSteps.length === 0
+      ? 'Ainda não há passos no plano.'
+      : `${doneCount} de ${filledSteps.length} ${filledSteps.length === 1 ? 'passo feito' : 'passos feitos'}.`
+  const shownProgress = progressFromSteps ? stepsProgress(filledSteps) : progress
+
+  const changeProgressFromSteps = (checked: boolean) => {
+    // Ao passar a escolher à mão, a barra começa na percentagem que se estava a ver.
+    if (!checked) setProgress(Math.round(shownProgress / PROGRESS_STEP) * PROGRESS_STEP)
+    setProgressFromSteps(checked)
+  }
+
   const submit = async (event: FormEvent) => {
     event.preventDefault()
     setSaving(true)
     setError(null)
-    const fields = { title: title.trim(), category, startDate, targetDate, progress }
-    // Passos sem texto são ignorados (ex.: a linha vazia que o formulário mostra sempre).
-    const plan = steps.map((step) => ({ ...step, title: step.title.trim() })).filter((step) => step.title)
+    const fields = { title: title.trim(), category, startDate, targetDate, progressFromSteps }
+    const plan = filledSteps.map((step) => ({ ...step, title: step.title.trim() }))
     try {
       if (isEditing) {
         // A nota só vai se mudou: se o objetivo foi avaliado noutro lado com o formulário
@@ -100,6 +139,8 @@ export function GoalDialog({ today, goal, onClose, onCreate, onUpdate, onDelete 
         const noteChanged = goal.outcome !== null && note !== (goal.outcomeNote ?? '')
         await onUpdate(goal.id, {
           ...fields,
+          // Com o progresso pelos passos, a percentagem escolhida à mão fica como estava.
+          ...(!progressFromSteps && { progress }),
           description: description.trim() || null,
           plan: plan.map(({ id, title, done }) => ({ id, title, done })),
           ...(noteChanged && { outcomeNote: note || null }),
@@ -107,6 +148,7 @@ export function GoalDialog({ today, goal, onClose, onCreate, onUpdate, onDelete 
       } else {
         await onCreate({
           ...fields,
+          progress: progressFromSteps ? 0 : progress,
           description: description.trim() || undefined,
           plan: plan.map(({ title }) => ({ title })),
         })
@@ -148,7 +190,7 @@ export function GoalDialog({ today, goal, onClose, onCreate, onUpdate, onDelete 
     >
       <form className="goal-form" onSubmit={submit}>
         <header className="modal__header">
-          <h2 id="goal-dialog-title">{isEditing ? 'Editar objetivo' : 'Novo objetivo'}</h2>
+          <h2 id="goal-dialog-title">{isEditing ? 'Editar objetivo' : (draft?.heading ?? 'Novo objetivo')}</h2>
           <button type="button" className="icon-btn" onClick={onClose} aria-label="Fechar">
             <X size={18} />
           </button>
@@ -249,20 +291,39 @@ export function GoalDialog({ today, goal, onClose, onCreate, onUpdate, onDelete 
             </label>
           </div>
 
-          <label className="field">
-            <span className="field__label">
-              Progresso atual <strong className="field__value">{progress}%</strong>
-            </span>
-            <input
-              className="range"
-              type="range"
-              min={0}
-              max={100}
-              step={5}
-              value={progress}
-              onChange={(e) => setProgress(Number(e.target.value))}
-            />
-          </label>
+          <div className="field">
+            {progressFromSteps ? (
+              <>
+                <span className="field__label">
+                  Progresso <strong className="field__value">{shownProgress}%</strong>
+                </span>
+                <span className="field__hint">{stepsHint}</span>
+              </>
+            ) : (
+              <label className="field">
+                <span className="field__label">
+                  Progresso atual <strong className="field__value">{progress}%</strong>
+                </span>
+                <input
+                  className="range"
+                  type="range"
+                  min={0}
+                  max={100}
+                  step={PROGRESS_STEP}
+                  value={progress}
+                  onChange={(e) => setProgress(Number(e.target.value))}
+                />
+              </label>
+            )}
+            <label className="check-field">
+              <input
+                type="checkbox"
+                checked={progressFromSteps}
+                onChange={(e) => changeProgressFromSteps(e.target.checked)}
+              />
+              Calcular pelos passos feitos
+            </label>
+          </div>
 
           <fieldset className="field">
             <legend className="field__label">
@@ -299,6 +360,36 @@ export function GoalDialog({ today, goal, onClose, onCreate, onUpdate, onDelete 
                     maxLength={200}
                     aria-label={`Passo ${index + 1}`}
                   />
+                  {steps.length > 1 && (
+                    <div className="plan-input__move">
+                      <button
+                        ref={(element) => {
+                          moveRefs.current.set(`${step.key}:-1`, element)
+                        }}
+                        type="button"
+                        className="ghost-btn"
+                        onClick={() => moveStep(index, -1)}
+                        disabled={index === 0}
+                        aria-label={`Subir passo ${index + 1}`}
+                        title="Subir"
+                      >
+                        <ChevronUp size={16} aria-hidden />
+                      </button>
+                      <button
+                        ref={(element) => {
+                          moveRefs.current.set(`${step.key}:1`, element)
+                        }}
+                        type="button"
+                        className="ghost-btn"
+                        onClick={() => moveStep(index, 1)}
+                        disabled={index === steps.length - 1}
+                        aria-label={`Descer passo ${index + 1}`}
+                        title="Descer"
+                      >
+                        <ChevronDown size={16} aria-hidden />
+                      </button>
+                    </div>
+                  )}
                   <button
                     type="button"
                     className="icon-btn plan-input__remove"

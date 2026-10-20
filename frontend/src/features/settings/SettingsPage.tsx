@@ -1,9 +1,11 @@
 import { useState, type FormEvent } from 'react'
-import { KeyRound, UserRound } from 'lucide-react'
-import { errorMessage } from '../../api/client'
+import { Download, KeyRound, UserRound } from 'lucide-react'
+import { api, errorMessage } from '../../api/client'
 import { Panel } from '../../components/ui/Panel'
 import type { AuthActions } from '../../hooks/useAuth'
 import type { User } from '../../types'
+import { toISODate } from '../../utils/date'
+import { exportFileName, goalsToCsv, goalsToJson } from '../../utils/export'
 import './settings.css'
 
 /** Igual ao mínimo da API (MIN_PASSWORD_LENGTH em backend/app/schemas.py). */
@@ -166,6 +168,72 @@ function PasswordForm({ email, onChangePassword }: { email: string; onChangePass
   )
 }
 
+/** Descarrega um ficheiro feito no browser. */
+function download(fileName: string, content: string, type: string) {
+  const url = URL.createObjectURL(new Blob([content], { type }))
+  const link = document.createElement('a')
+  link.href = url
+  link.download = fileName
+  document.body.append(link)
+  link.click()
+  link.remove()
+  // Só depois de o browser começar a descarregar.
+  setTimeout(() => URL.revokeObjectURL(url), 60_000)
+}
+
+function ExportPanel({ user }: { user: User }) {
+  const [state, setState] = useState<FormState>({ kind: 'idle' })
+
+  // Pede os objetivos à API na altura, para o ficheiro ter tudo o que está guardado.
+  const exportAs = async (format: 'csv' | 'json') => {
+    setState({ kind: 'saving' })
+    try {
+      const goals = await api.listGoals()
+      const now = new Date()
+      const fileName = exportFileName(toISODate(now), format)
+      if (format === 'csv') download(fileName, goalsToCsv(goals), 'text/csv;charset=utf-8')
+      else download(fileName, goalsToJson(user, goals, now.toISOString()), 'application/json')
+      setState({ kind: 'done', message: `Descarregado: ${fileName}` })
+    } catch (caught) {
+      setState({ kind: 'error', message: errorMessage(caught) })
+    }
+  }
+
+  return (
+    <Panel
+      title="Os teus dados"
+      icon={<Download size={18} aria-hidden />}
+      subtitle="Uma cópia dos teus objetivos e planos, para guardares."
+    >
+      <div className="settings-form">
+        <p className="settings-form__text">
+          O CSV abre numa folha de cálculo (Excel, Google Sheets ou Numbers). O JSON tem tudo o que está guardado,
+          incluindo os identificadores e as datas de criação.
+        </p>
+        <FormFeedback state={state} />
+        <div className="settings-form__actions">
+          <button
+            type="button"
+            className="btn btn--ghost"
+            onClick={() => exportAs('json')}
+            disabled={state.kind === 'saving'}
+          >
+            Descarregar JSON
+          </button>
+          <button
+            type="button"
+            className="btn btn--primary"
+            onClick={() => exportAs('csv')}
+            disabled={state.kind === 'saving'}
+          >
+            Descarregar CSV
+          </button>
+        </div>
+      </div>
+    </Panel>
+  )
+}
+
 interface SettingsPageProps extends AuthActions {
   user: User
 }
@@ -179,6 +247,7 @@ export function SettingsPage({ user, updateProfile, changePassword }: SettingsPa
       </header>
       <ProfileForm user={user} onUpdateProfile={updateProfile} />
       <PasswordForm email={user.email} onChangePassword={changePassword} />
+      <ExportPanel user={user} />
     </div>
   )
 }

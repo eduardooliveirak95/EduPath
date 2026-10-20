@@ -77,6 +77,26 @@ textarea.input {
   accent-color: var(--primary);
 }
 
+/* Caixa com o texto ao lado (ex.: calcular o progresso pelos passos) */
+.check-field {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  justify-self: start;
+  color: var(--text-muted);
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.check-field input {
+  width: 16px;
+  height: 16px;
+  margin: 0;
+  accent-color: var(--primary);
+  cursor: pointer;
+}
+
 /* Escolha de categoria */
 .choices {
   display: flex;
@@ -152,6 +172,12 @@ textarea.input {
 .plan-input--done .input {
   color: var(--text-muted);
   text-decoration: line-through;
+}
+
+/* Subir e descer, juntos para a caixa do passo ficar larga no telemóvel. */
+.plan-input__move {
+  display: flex;
+  flex: none;
 }
 
 .plan-input__remove {

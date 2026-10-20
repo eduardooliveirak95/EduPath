@@ -1,8 +1,37 @@
 import { STATUS_ORDER } from '../data/statuses'
-import type { Goal } from '../types'
+import type { Goal, NewGoal, PlanStep } from '../types'
+import { addDays, daysBetween } from './date'
 
 export function planSummary(goal: Goal): { done: number; total: number } {
   return { done: goal.plan.filter((step) => step.done).length, total: goal.plan.length }
+}
+
+/**
+ * Passos feitos em percentagem, arredondada (sem passos, 0).
+ * Tem de dar o mesmo que `steps_progress` (backend/app/models.py), que o calcula na API.
+ */
+export function stepsProgress(plan: { done: boolean }[]): number {
+  if (plan.length === 0) return 0
+  return Math.round((plan.filter((step) => step.done).length * 100) / plan.length)
+}
+
+/** O objetivo com o plano mudado. Se o progresso vem dos passos, volta a ser calculado, como na API. */
+export function withPlan(goal: Goal, plan: PlanStep[]): Goal {
+  return { ...goal, plan, progress: goal.progressFromSteps ? stepsProgress(plan) : goal.progress }
+}
+
+/** Um objetivo novo igual a outro (para o repetir), a começar hoje e com a mesma duração. */
+export function repeatGoal(goal: Goal, today: string): NewGoal {
+  return {
+    title: goal.title,
+    description: goal.description ?? undefined,
+    category: goal.category,
+    startDate: today,
+    targetDate: addDays(today, daysBetween(goal.startDate, goal.targetDate)),
+    progress: 0,
+    progressFromSteps: goal.progressFromSteps,
+    plan: goal.plan.map(({ title }) => ({ title })),
+  }
 }
 
 /** Em minúsculas e sem acentos: "Saúde" e "saude" são iguais na pesquisa. */

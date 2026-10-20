@@ -4,18 +4,21 @@ import type { Goal } from '../../types'
 import { formatLongDate } from '../../utils/date'
 import { closedOn, planSummary } from '../../utils/goals'
 import { CategoryBadge } from '../ui/CategoryBadge'
+import { RepeatButton } from './RepeatButton'
 import './goals.css'
 
 interface HistoryItemProps {
   goal: Goal
   onEdit: (goalId: number) => void
   onReopen: (goalId: number) => Promise<void>
+  /** Mostra o botão para criar outro objetivo igual. */
+  onRepeat?: (goalId: number) => void
   /** Mostra também a categoria, o progresso e os passos feitos (página Histórico). */
   detailed?: boolean
 }
 
 /** Um objetivo avaliado, com o resultado, e as ações para o editar ou anular a avaliação. */
-export function HistoryItem({ goal, onEdit, onReopen, detailed = false }: HistoryItemProps) {
+export function HistoryItem({ goal, onEdit, onReopen, onRepeat, detailed = false }: HistoryItemProps) {
   const [reopening, setReopening] = useState(false)
   const success = goal.status === 'sucedido'
   const { done, total } = planSummary(goal)
@@ -54,6 +57,7 @@ export function HistoryItem({ goal, onEdit, onReopen, detailed = false }: Histor
         {goal.outcomeNote && <p className="history-item__note">{goal.outcomeNote}</p>}
       </div>
       <div className="history-item__actions">
+        {onRepeat && <RepeatButton goal={goal} onRepeat={onRepeat} />}
         <button
           type="button"
           className="ghost-btn"

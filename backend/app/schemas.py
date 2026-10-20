@@ -88,6 +88,9 @@ class GoalCreate(ApiModel):
     start_date: date | None = Field(default=None, description="Por omissão, a data de hoje.")
     target_date: date
     progress: Progress = 0
+    progress_from_steps: bool = Field(
+        default=False, description="Se for true, o progresso é a percentagem de passos feitos."
+    )
     plan: list[PlanStepCreate] = Field(default_factory=list)
 
     @model_validator(mode="after")
@@ -104,6 +107,7 @@ class GoalUpdate(ApiModel):
     start_date: date | None = None
     target_date: date | None = None
     progress: Progress | None = None
+    progress_from_steps: bool | None = None
     plan: list[PlanStepEdit] | None = Field(
         default=None,
         description=(
@@ -118,7 +122,18 @@ class GoalUpdate(ApiModel):
 
     @model_validator(mode="after")
     def _no_nulls(self) -> Self:
-        reject_nulls(self, ("title", "category", "start_date", "target_date", "progress", "plan"))
+        reject_nulls(
+            self,
+            (
+                "title",
+                "category",
+                "start_date",
+                "target_date",
+                "progress",
+                "progress_from_steps",
+                "plan",
+            ),
+        )
         return self
 
 
@@ -129,7 +144,10 @@ class GoalRead(ApiModel):
     category: Category
     start_date: date
     target_date: date
-    progress: int
+    progress: int = Field(
+        description="Com progressFromSteps, a percentagem de passos feitos (sem passos, 0)."
+    )
+    progress_from_steps: bool
     status: GoalStatus
     plan: list[PlanStepRead]
     outcome: Outcome | None
@@ -140,8 +158,9 @@ class GoalRead(ApiModel):
 
     @classmethod
     def from_goal(cls, goal: Goal, today: date) -> Self:
-        data = {name: getattr(goal, name) for name in cls.model_fields if name != "status"}
-        return cls.model_validate({**data, "status": goal.status(today)})
+        derived = {"status": goal.status(today), "progress": goal.current_progress()}
+        data = {name: getattr(goal, name) for name in cls.model_fields if name not in derived}
+        return cls.model_validate({**data, **derived})
 
 
 class EvaluationCreate(ApiModel):

@@ -23,8 +23,10 @@ export interface Goal {
   /** Datas em formato ISO (AAAA-MM-DD). */
   startDate: string
   targetDate: string
-  /** Percentagem de conclusão do objetivo (0–100). */
+  /** Percentagem de conclusão do objetivo (0–100). Com `progressFromSteps`, é a dos passos feitos. */
   progress: number
+  /** O progresso é calculado pelos passos feitos, e não escolhido à mão. */
+  progressFromSteps: boolean
   status: GoalStatus
   plan: PlanStep[]
   outcome: GoalOutcome | null
@@ -41,6 +43,7 @@ export interface NewGoal {
   startDate: string
   targetDate: string
   progress: number
+  progressFromSteps: boolean
   plan: { title: string }[]
 }
 
@@ -52,6 +55,7 @@ export interface GoalChanges {
   startDate?: string
   targetDate?: string
   progress?: number
+  progressFromSteps?: boolean
   /** Substitui o plano todo: passos com `id` mantêm-se, sem `id` são novos, os que faltam são apagados. */
   plan?: { id?: number; title: string; done: boolean }[]
   /** Nota da avaliação: só em objetivos já avaliados; `null` apaga-a. */

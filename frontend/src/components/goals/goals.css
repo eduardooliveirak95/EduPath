@@ -21,6 +21,11 @@
   gap: 8px;
 }
 
+.goal-card__actions {
+  display: flex;
+  flex: none;
+}
+
 .goal-card__badges {
   display: flex;
   flex-wrap: wrap;

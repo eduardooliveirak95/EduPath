@@ -27,7 +27,14 @@
   font-size: 0.92rem;
 }
 
+.settings-form__text {
+  color: var(--text-muted);
+  font-size: 0.88rem;
+}
+
 .settings-form__actions {
   display: flex;
+  flex-wrap: wrap;
   justify-content: flex-end;
+  gap: 10px;
 }

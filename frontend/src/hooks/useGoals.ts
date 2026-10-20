@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { api, errorMessage } from '../api/client'
 import type { Goal, GoalChanges, GoalOutcome, NewGoal, PlanStep } from '../types'
+import { withPlan } from '../utils/goals'
 import { onResume } from '../utils/resume'
 
 type LoadState = { kind: 'loading' } | { kind: 'error'; message: string } | { kind: 'ready' }
@@ -68,8 +69,9 @@ export function useGoals() {
   const replaceGoal = (updated: Goal) =>
     changeGoals((current) => current.map((goal) => (goal.id === updated.id ? updated : goal)))
 
+  // Com o progresso calculado pelos passos, a percentagem acompanha logo o plano.
   const updatePlan = (goalId: number, change: (plan: PlanStep[]) => PlanStep[]) =>
-    changeGoals((current) => current.map((goal) => (goal.id === goalId ? { ...goal, plan: change(goal.plan) } : goal)))
+    changeGoals((current) => current.map((goal) => (goal.id === goalId ? withPlan(goal, change(goal.plan)) : goal)))
 
   /** Corre uma ação; se falhar, guarda a mensagem para o aviso global. */
   const run = async (action: () => Promise<void>) => {

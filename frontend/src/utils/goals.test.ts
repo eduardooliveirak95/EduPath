@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { buildNotifications } from '../hooks/useNotifications'
 import type { Goal, GoalStatus } from '../types'
-import { byStatus, matchesQuery, planSummary } from './goals'
+import { byStatus, matchesQuery, planSummary, repeatGoal, stepsProgress, withPlan } from './goals'
 
 let nextId = 1
 
@@ -16,6 +16,7 @@ function goal(fields: Partial<Goal> = {}): Goal {
     startDate: '2026-01-01',
     targetDate: '2026-07-01',
     progress: 0,
+    progressFromSteps: false,
     status,
     plan: [],
     outcome: closed ? status : null,
@@ -56,6 +57,63 @@ describe('matchesQuery', () => {
 describe('planSummary', () => {
   it('conta os passos feitos', () => {
     expect(planSummary(goal({ plan: [step('a', true), step('b'), step('c', true)] }))).toEqual({ done: 2, total: 3 })
+  })
+})
+
+describe('stepsProgress', () => {
+  it('dá a percentagem de passos feitos, arredondada como na API', () => {
+    expect(stepsProgress([step('a', true), step('b'), step('c')])).toBe(33)
+    expect(stepsProgress([step('a', true), step('b', true), step('c')])).toBe(67)
+    // 1 de 8 é 12,5%: arredonda para cima, como o steps_progress da API (test_progress_from_steps_rounds_half_up).
+    expect(stepsProgress([step('a', true), ...Array.from({ length: 7 }, () => step('b'))])).toBe(13)
+  })
+
+  it('sem passos, dá 0', () => {
+    expect(stepsProgress([])).toBe(0)
+  })
+})
+
+describe('withPlan', () => {
+  const plan = [step('a', true), step('b')]
+
+  it('volta a calcular o progresso, se vem dos passos', () => {
+    expect(withPlan(goal({ progress: 0, progressFromSteps: true }), plan).progress).toBe(50)
+  })
+
+  it('não mexe no progresso escolhido à mão', () => {
+    const updated = withPlan(goal({ progress: 20 }), plan)
+    expect(updated.progress).toBe(20)
+    expect(updated.plan).toBe(plan)
+  })
+})
+
+describe('repeatGoal', () => {
+  it('copia o objetivo a começar hoje, com a mesma duração e os passos por fazer', () => {
+    const original = goal({
+      title: 'Ler 24 livros',
+      description: 'Dois por mês',
+      category: 'aprendizagem',
+      startDate: '2026-01-01',
+      targetDate: '2026-03-31',
+      progress: 80,
+      progressFromSteps: true,
+      status: 'nao_sucedido',
+      plan: [step('Fazer a lista', true), step('Ler todos os dias')],
+    })
+    expect(repeatGoal(original, '2026-10-20')).toEqual({
+      title: 'Ler 24 livros',
+      description: 'Dois por mês',
+      category: 'aprendizagem',
+      startDate: '2026-10-20',
+      targetDate: '2027-01-17', // 89 dias depois, como de 1 de janeiro a 31 de março
+      progress: 0,
+      progressFromSteps: true,
+      plan: [{ title: 'Fazer a lista' }, { title: 'Ler todos os dias' }],
+    })
+  })
+
+  it('sem descrição, fica sem descrição', () => {
+    expect(repeatGoal(goal({ description: null }), '2026-10-20').description).toBeUndefined()
   })
 })
 

@@ -3,6 +3,7 @@ import { CATEGORIES } from '../../data/categories'
 import type { Goal } from '../../types'
 import { daysBetween, describeDaysLeft, formatShortDate } from '../../utils/date'
 import { closedOn, planSummary } from '../../utils/goals'
+import { RepeatButton } from './RepeatButton'
 import { CategoryBadge } from '../ui/CategoryBadge'
 import { ProgressBar } from '../ui/ProgressBar'
 import { StatusBadge } from '../ui/StatusBadge'
@@ -15,11 +16,13 @@ interface GoalCardProps {
   goal: Goal
   today: string
   onEdit: (goalId: number) => void
+  /** Nos objetivos avaliados, mostra o botão para criar outro igual. */
+  onRepeat?: (goalId: number) => void
   /** Mostra o estado ao lado da categoria (onde há objetivos com estados diferentes). */
   showStatus?: boolean
 }
 
-export function GoalCard({ goal, today, onEdit, showStatus = false }: GoalCardProps) {
+export function GoalCard({ goal, today, onEdit, onRepeat, showStatus = false }: GoalCardProps) {
   const daysLeft = daysBetween(today, goal.targetDate)
   const { done, total } = planSummary(goal)
   const closed = goal.status === 'sucedido' || goal.status === 'nao_sucedido'
@@ -31,15 +34,18 @@ export function GoalCard({ goal, today, onEdit, showStatus = false }: GoalCardPr
           <CategoryBadge category={goal.category} />
           {showStatus && <StatusBadge status={goal.status} />}
         </div>
-        <button
-          type="button"
-          className="ghost-btn"
-          onClick={() => onEdit(goal.id)}
-          aria-label={`Editar "${goal.title}"`}
-          title="Editar"
-        >
-          <Pencil size={16} />
-        </button>
+        <div className="goal-card__actions">
+          {closed && onRepeat && <RepeatButton goal={goal} onRepeat={onRepeat} />}
+          <button
+            type="button"
+            className="ghost-btn"
+            onClick={() => onEdit(goal.id)}
+            aria-label={`Editar "${goal.title}"`}
+            title="Editar"
+          >
+            <Pencil size={16} />
+          </button>
+        </div>
       </header>
 
       <h3 className="goal-card__title">{goal.title}</h3>

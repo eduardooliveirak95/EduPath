@@ -25,10 +25,11 @@ interface GoalsPageProps {
   onClearQuery: () => void
   onNewGoal: () => void
   onEditGoal: (goalId: number) => void
+  onRepeatGoal: (goalId: number) => void
 }
 
 /** Todos os objetivos, com filtros por estado e categoria, pesquisa e ordenação. */
-export function GoalsPage({ goals, today, query, onClearQuery, onNewGoal, onEditGoal }: GoalsPageProps) {
+export function GoalsPage({ goals, today, query, onClearQuery, onNewGoal, onEditGoal, onRepeatGoal }: GoalsPageProps) {
   const [status, setStatus] = useState<GoalStatus | 'todos'>('todos')
   const [category, setCategory] = useState<Category | 'todas'>('todas')
   const [sort, setSort] = useState<Sort>('estado')
@@ -135,7 +136,14 @@ export function GoalsPage({ goals, today, query, onClearQuery, onNewGoal, onEdit
           ) : (
             <div className="goals-grid">
               {visible.map((goal) => (
-                <GoalCard key={goal.id} goal={goal} today={today} onEdit={onEditGoal} showStatus />
+                <GoalCard
+                  key={goal.id}
+                  goal={goal}
+                  today={today}
+                  onEdit={onEditGoal}
+                  onRepeat={onRepeatGoal}
+                  showStatus
+                />
               ))}
             </div>
           )}

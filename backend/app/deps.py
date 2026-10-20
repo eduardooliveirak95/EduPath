@@ -1,17 +1,18 @@
-from datetime import date
+from datetime import date, datetime
 from typing import Annotated
 
 from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy.orm import Session
 
-from app.config import Settings, get_settings, get_today
+from app.config import Settings, get_now, get_settings, get_today
 from app.database import get_session
 from app.models import Goal, User
 from app.security import password_fingerprint, read_token
 
 SessionDep = Annotated[Session, Depends(get_session)]
 TodayDep = Annotated[date, Depends(get_today)]
+NowDep = Annotated[datetime, Depends(get_now)]
 SettingsDep = Annotated[Settings, Depends(get_settings)]
 
 # auto_error=False: sem token, quem responde é get_current_user, com a mensagem em português.

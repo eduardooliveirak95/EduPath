@@ -1,5 +1,5 @@
 from collections.abc import Mapping
-from datetime import date, datetime
+from datetime import UTC, date, datetime
 from functools import lru_cache
 from typing import Annotated
 from zoneinfo import ZoneInfo
@@ -48,3 +48,8 @@ def get_settings() -> Settings:
 def get_today() -> date:
     """Data de hoje no fuso horário configurado (dependência do FastAPI)."""
     return datetime.now(ZoneInfo(get_settings().timezone)).date()
+
+
+def get_now() -> datetime:
+    """Agora, em UTC (dependência do FastAPI, para os testes poderem avançar o relógio)."""
+    return datetime.now(UTC)

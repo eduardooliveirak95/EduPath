@@ -66,6 +66,18 @@ class User(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
 
+class LoginFailure(Base):
+    """Tentativa de entrar com a password errada, para limitar as tentativas por email
+    (routers/auth.py). Guarda o email escrito, tenha ou não conta, para o limite não revelar
+    que emails têm conta. As de há mais tempo do que o limite vão sendo apagadas."""
+
+    __tablename__ = "login_failures"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    email: Mapped[str] = mapped_column(String(254), index=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+
+
 class InviteStatus(StrEnum):
     """Estado derivado da data de validade e de o convite ter sido usado (não é guardado)."""
 

@@ -53,7 +53,7 @@ function AddStepForm({ goal, onAdd }: { goal: Goal; onAdd: GoalActions['addStep'
           aria-label={`Novo passo para "${goal.title}"`}
           maxLength={200}
         />
-        <button type="submit" className="btn btn--ghost" disabled={saving || !title.trim()}>
+        <button type="submit" className="btn btn--ghost" disabled={saving || !title.trim()} aria-label="Acrescentar">
           <Plus size={16} aria-hidden />
           <span className="add-step__label">Acrescentar</span>
         </button>

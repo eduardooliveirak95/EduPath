@@ -17,7 +17,7 @@ export interface AppNotification {
 }
 
 /** Calculadas a partir dos objetivos: não há notificações guardadas no servidor. */
-function buildNotifications(goals: Goal[], today: string): AppNotification[] {
+export function buildNotifications(goals: Goal[], today: string): AppNotification[] {
   const toReview = goals
     .filter((goal) => goal.status === 'por_avaliar')
     .sort(byDeadline)

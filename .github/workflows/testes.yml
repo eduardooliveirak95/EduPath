@@ -1,0 +1,59 @@
+# Corre todos os testes a cada push no main (e à mão, em Actions → Testes → Run workflow).
+# Se algum falhar, o GitHub manda um email. O Vercel publica na mesma: isto avisa, não bloqueia.
+name: Testes
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  api:
+    name: API
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v5
+      - uses: astral-sh/setup-uv@v7
+      - run: uv sync
+      - run: uv run ruff check .
+      - run: uv run ruff format --check .
+      - run: uv run pytest
+
+  site:
+    name: Site
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      # Os testes de ponta a ponta arrancam a API.
+      - uses: astral-sh/setup-uv@v7
+      - run: npm ci
+      - run: npm run lint
+      - run: npm run build
+      - run: npm test
+      - run: npx playwright install --with-deps chromium
+      - run: uv sync
+        working-directory: backend
+      - run: npm run test:e2e
+      - name: Guardar o relatório dos testes (se algum falhar)
+        if: failure()
+        uses: actions/upload-artifact@v6
+        with:
+          name: relatorio-dos-testes
+          path: frontend/playwright-report/
+          retention-days: 14

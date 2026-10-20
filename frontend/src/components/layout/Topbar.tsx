@@ -38,7 +38,8 @@ export function Topbar({ today, query, onSearch, onOpenMenu, onNewGoal, notifica
           {formatWeekday(today)}
         </span>
         {notifications}
-        <button type="button" className="btn btn--primary" onClick={onNewGoal}>
+        {/* O aria-label dá nome ao botão no telemóvel, onde o texto fica escondido e só se vê o "+". */}
+        <button type="button" className="btn btn--primary" onClick={onNewGoal} aria-label="Novo objetivo">
           <Plus size={18} strokeWidth={2.5} aria-hidden />
           <span className="topbar__new-label">Novo objetivo</span>
         </button>

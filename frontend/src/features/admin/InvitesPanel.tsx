@@ -1,6 +1,7 @@
 import { useEffect, useState, type CSSProperties } from 'react'
-import { Check, Copy, LoaderCircle, Plus, Ticket, X } from 'lucide-react'
+import { LoaderCircle, Plus, Ticket, X } from 'lucide-react'
 import { api, errorMessage } from '../../api/client'
+import { CopyButton } from '../../components/ui/CopyButton'
 import { Panel } from '../../components/ui/Panel'
 import type { Invite, InviteStatus } from '../../types'
 import { formatShortDate } from '../../utils/date'
@@ -27,29 +28,6 @@ function describe(invite: Invite): string {
   return invite.status === 'expirado' ? `Era válido até ${until}` : `Válido até ${until}`
 }
 
-function CopyLinkButton({ code }: { code: string }) {
-  const [copied, setCopied] = useState(false)
-
-  const copy = async () => {
-    const link = inviteLink(code)
-    try {
-      await navigator.clipboard.writeText(link)
-      setCopied(true)
-      window.setTimeout(() => setCopied(false), 2000)
-    } catch {
-      // Sem acesso à área de transferência: mostra o link para copiar à mão.
-      window.prompt('Copia o link do convite:', link)
-    }
-  }
-
-  return (
-    <button type="button" className="btn btn--ghost btn--sm" onClick={copy}>
-      {copied ? <Check size={15} aria-hidden /> : <Copy size={15} aria-hidden />}
-      {copied ? 'Copiado' : 'Copiar link'}
-    </button>
-  )
-}
-
 function InviteItem({ invite, onRemove }: { invite: Invite; onRemove: (invite: Invite) => void }) {
   const pending = invite.status === 'por_usar'
   return (
@@ -64,7 +42,9 @@ function InviteItem({ invite, onRemove }: { invite: Invite; onRemove: (invite: I
         <span className="invite__meta">{describe(invite)}</span>
       </div>
       <div className="invite__actions">
-        {pending && <CopyLinkButton code={invite.code} />}
+        {pending && (
+          <CopyButton text={inviteLink(invite.code)} label="Copiar link" promptMessage="Copia o link do convite:" />
+        )}
         <button
           type="button"
           className="ghost-btn"

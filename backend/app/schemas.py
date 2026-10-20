@@ -245,3 +245,9 @@ class AdminUserRead(ApiModel):
     email: str
     is_admin: bool
     created_at: datetime
+
+
+class TemporaryPassword(ApiModel):
+    """Password nova de uma conta, dada pelo administrador. Só aparece nesta resposta."""
+
+    password: str

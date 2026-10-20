@@ -72,6 +72,11 @@ export interface AdminUser extends User {
   createdAt: string
 }
 
+/** Password nova que o administrador dá a uma conta (ex.: ABCD-2345-EFGH). Só aparece uma vez. */
+export interface TemporaryPassword {
+  password: string
+}
+
 /** Sessão devolvida ao entrar: o token vai no cabeçalho Authorization de cada pedido. */
 export interface Session {
   token: string

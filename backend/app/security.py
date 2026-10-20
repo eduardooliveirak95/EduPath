@@ -20,6 +20,7 @@ from argon2 import PasswordHasher
 from argon2.exceptions import InvalidHashError, VerificationError
 
 from app.config import Settings
+from app.invite_codes import format_invite_code, new_invite_code
 from app.models import User
 from app.schemas import SessionRead, UserRead
 
@@ -34,6 +35,12 @@ def config_error(settings: Settings) -> str | None:
     if len(settings.session_secret) < MIN_SECRET_LENGTH:
         return f"SESSION_SECRET tem de ter pelo menos {MIN_SECRET_LENGTH} caracteres."
     return None
+
+
+def new_temporary_password() -> str:
+    """Password temporária para quem perdeu a sua: no formato dos convites (ABCD-2345-EFGH),
+    fácil de ditar e de escrever, com quase 60 bits aleatórios."""
+    return format_invite_code(new_invite_code())
 
 
 def secrets_match(given: str, expected: str) -> bool:

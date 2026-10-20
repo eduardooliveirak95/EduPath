@@ -1,9 +1,10 @@
 from fastapi import APIRouter, HTTPException, status
-from sqlalchemy import select
+from sqlalchemy import delete, select
 
 from app.deps import AdminDep, SessionDep
-from app.models import User
-from app.schemas import AdminUserRead
+from app.models import LoginFailure, User
+from app.schemas import AdminUserRead, TemporaryPassword
+from app.security import hash_password, new_temporary_password
 
 # Só para o administrador (AdminDep). Mostra que as contas existem, e nada mais:
 # os objetivos de cada pessoa são privados e não aparecem aqui (nem quantos são).
@@ -32,3 +33,26 @@ def delete_user(user_id: int, session: SessionDep, _admin: AdminDep):
         )
     session.delete(user)
     session.commit()
+
+
+@router.post("/users/{user_id}/password", response_model=TemporaryPassword)
+def reset_password(user_id: int, session: SessionDep, _admin: AdminDep):
+    """Dá uma password nova a uma conta, para quem perdeu a sua. Só aparece nesta resposta:
+    o administrador passa-a à pessoa, que a pode mudar depois nas Definições.
+
+    A password antiga deixa de servir e as sessões abertas da conta terminam (como ao mudar
+    a password). As tentativas de login falhadas desse email deixam de contar.
+    """
+    user = session.get(User, user_id)
+    if user is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Conta não encontrada.")
+    if user.is_admin:
+        raise HTTPException(
+            status.HTTP_409_CONFLICT,
+            "Não dá para repor a password de um administrador. Muda-a nas Definições.",
+        )
+    password = new_temporary_password()
+    user.password_hash = hash_password(password)
+    session.execute(delete(LoginFailure).where(LoginFailure.email == user.email))
+    session.commit()
+    return TemporaryPassword(password=password)

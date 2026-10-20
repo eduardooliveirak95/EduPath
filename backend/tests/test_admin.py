@@ -1,6 +1,9 @@
+import re
 from datetime import datetime
 
 from sqlalchemy import text
+
+from tests.conftest import TEST_PASSWORD
 
 
 def test_admin_sees_the_accounts_and_nothing_of_their_goals(admin_client, client, create_goal):
@@ -72,3 +75,47 @@ def test_admin_account_cannot_be_removed(admin_client, admin, make_user):
 def test_other_accounts_cannot_remove_accounts(client, admin):
     response = client.delete(f"/api/admin/users/{admin.id}")
     assert response.status_code == 403
+
+
+def login(anon_client, password, email="teste@edupath.pt"):
+    return anon_client.post("/api/auth/login", json={"email": email, "password": password})
+
+
+def test_admin_gives_an_account_a_new_password(admin_client, client, user, anon_client):
+    response = admin_client.post(f"/api/admin/users/{user.id}/password")
+
+    assert response.status_code == 200
+    password = response.json()["password"]
+    assert re.fullmatch(r"[A-Z2-9]{4}-[A-Z2-9]{4}-[A-Z2-9]{4}", password)
+    assert login(anon_client, TEST_PASSWORD).status_code == 401  # a antiga deixou de servir
+    assert login(anon_client, password).status_code == 200
+    assert client.get("/api/goals").status_code == 401  # a sessão que estava aberta terminou
+
+
+def test_each_new_password_is_different(admin_client, user):
+    url = f"/api/admin/users/{user.id}/password"
+    passwords = {admin_client.post(url).json()["password"] for _ in range(5)}
+    assert len(passwords) == 5
+
+
+def test_new_password_unblocks_the_login(admin_client, user, anon_client):
+    for _ in range(5):
+        login(anon_client, "password-errada")
+    assert login(anon_client, TEST_PASSWORD).status_code == 429
+
+    password = admin_client.post(f"/api/admin/users/{user.id}/password").json()["password"]
+
+    assert login(anon_client, password).status_code == 200
+
+
+def test_new_password_only_for_accounts_that_are_not_admin(admin_client, admin, anon_client):
+    response = admin_client.post(f"/api/admin/users/{admin.id}/password")
+    assert response.status_code == 409
+    assert login(anon_client, TEST_PASSWORD, email="admin@edupath.pt").status_code == 200
+    assert admin_client.post("/api/admin/users/999/password").status_code == 404
+
+
+def test_only_the_admin_gives_new_passwords(client, make_user, anon_client):
+    other = make_user(email="outra@edupath.pt")
+    assert client.post(f"/api/admin/users/{other.id}/password").status_code == 403
+    assert login(anon_client, TEST_PASSWORD, email="outra@edupath.pt").status_code == 200

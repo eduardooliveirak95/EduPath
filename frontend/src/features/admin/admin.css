@@ -58,6 +58,29 @@
   font-size: 0.85rem;
 }
 
+/* Password nova: confirmação e a password, num cartão neutro */
+.account-row__confirm--neutral {
+  background: var(--surface-2);
+}
+
+.account-row__password {
+  justify-self: start;
+  padding: 6px 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 1.05rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  user-select: all;
+}
+
+.account-row__buttons {
+  display: flex;
+  gap: 4px;
+}
+
 .account-row__actions {
   display: flex;
   flex-wrap: wrap;

@@ -1,4 +1,16 @@
-import type { AdminUser, Goal, GoalChanges, GoalOutcome, Invite, NewAccount, NewGoal, PlanStep, Session, User } from '../types'
+import type {
+  AdminUser,
+  Goal,
+  GoalChanges,
+  GoalOutcome,
+  Invite,
+  NewAccount,
+  NewGoal,
+  PlanStep,
+  Session,
+  TemporaryPassword,
+  User,
+} from '../types'
 
 const BASE_URL = (import.meta.env.VITE_API_URL ?? '').replace(/\/+$/, '')
 
@@ -170,6 +182,10 @@ export const api = {
 
   /** Apaga a conta e tudo o que é dela (objetivos e passos). */
   deleteAccount: (userId: number) => request<void>(`/api/admin/users/${userId}`, 'DELETE'),
+
+  /** Dá uma password nova à conta; a antiga deixa de servir e as sessões dela terminam. */
+  resetPassword: (userId: number) =>
+    request<TemporaryPassword>(`/api/admin/users/${userId}/password`, 'POST'),
 
   listInvites: () => request<Invite[]>('/api/invites'),
 

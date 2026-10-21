@@ -75,3 +75,33 @@ test('muda a ordem dos passos do plano', async ({ page }) => {
   await expect(dialog.getByLabel('Passo 3 feito')).toBeChecked()
   await expect(dialog.getByLabel('Passo 1 feito')).not.toBeChecked()
 })
+
+test('mostra a evolução do progresso, com o registo de hoje atualizado', async ({ page }) => {
+  await openFromSidebar(page, 'Objetivos')
+  await page.getByRole('button', { name: 'Evolução de "Correr uma meia maratona"' }).click()
+  const dialog = page.getByRole('dialog', { name: 'Evolução do progresso' })
+  await expect(dialog.getByText(/^De 0% a 45% desde .+ \(\+45 pontos\)\.$/)).toBeVisible()
+  await dialog.getByText('Ver os registos (4)').click()
+  const values = dialog.getByRole('row').locator('td:last-child')
+  await expect(values).toHaveText(['0%', '15%', '30%', '45%'])
+
+  // Com as setas, o gráfico mostra cada registo (começa no último).
+  const chart = dialog.getByLabel('Gráfico da evolução. Usa as setas para ver cada registo.')
+  await chart.focus()
+  await expect(dialog.locator('.progress-chart__tooltip strong')).toHaveText('45%')
+  await chart.press('ArrowLeft')
+  await expect(dialog.locator('.progress-chart__tooltip strong')).toHaveText('30%')
+  await dialog.getByRole('button', { name: 'Fechar' }).click()
+  await expect(dialog).toBeHidden()
+
+  // Mudar a percentagem hoje substitui o registo de hoje, sem acrescentar outro.
+  await page.getByRole('button', { name: 'Editar "Correr uma meia maratona"' }).click()
+  const editing = page.getByRole('dialog', { name: 'Editar objetivo' })
+  await editing.getByRole('slider', { name: /Progresso atual/ }).fill('60')
+  await editing.getByRole('button', { name: 'Guardar' }).click()
+  await expect(editing).toBeHidden()
+  await page.getByRole('button', { name: 'Evolução de "Correr uma meia maratona"' }).click()
+  await expect(dialog.getByText(/^De 0% a 60% desde /)).toBeVisible()
+  await dialog.getByText('Ver os registos (4)').click()
+  await expect(values).toHaveText(['0%', '15%', '30%', '60%'])
+})

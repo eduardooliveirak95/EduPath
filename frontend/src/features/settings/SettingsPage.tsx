@@ -192,8 +192,13 @@ function ExportPanel({ user }: { user: User }) {
       const goals = await api.listGoals()
       const now = new Date()
       const fileName = exportFileName(toISODate(now), format)
-      if (format === 'csv') download(fileName, goalsToCsv(goals), 'text/csv;charset=utf-8')
-      else download(fileName, goalsToJson(user, goals, now.toISOString()), 'application/json')
+      if (format === 'csv') {
+        download(fileName, goalsToCsv(goals), 'text/csv;charset=utf-8')
+      } else {
+        const histories = await Promise.all(goals.map((goal) => api.goalProgress(goal.id)))
+        const withHistory = goals.map((goal, index) => ({ ...goal, progressHistory: histories[index] }))
+        download(fileName, goalsToJson(user, withHistory, now.toISOString()), 'application/json')
+      }
       setState({ kind: 'done', message: `Descarregado: ${fileName}` })
     } catch (caught) {
       setState({ kind: 'error', message: errorMessage(caught) })
@@ -209,7 +214,7 @@ function ExportPanel({ user }: { user: User }) {
       <div className="settings-form">
         <p className="settings-form__text">
           O CSV abre numa folha de cálculo (Excel, Google Sheets ou Numbers). O JSON tem tudo o que está guardado,
-          incluindo os identificadores e as datas de criação.
+          incluindo a evolução do progresso de cada objetivo.
         </p>
         <FormFeedback state={state} />
         <div className="settings-form__actions">

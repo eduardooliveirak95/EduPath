@@ -1,14 +1,17 @@
 import { CATEGORIES } from '../data/categories'
 import { STATUSES } from '../data/statuses'
-import type { Goal, User } from '../types'
+import type { Goal, ProgressPoint, User } from '../types'
 
 /** Nome do ficheiro descarregado, com o dia (ex.: edupath-2026-10-20.csv). */
 export function exportFileName(today: string, extension: 'json' | 'csv'): string {
   return `edupath-${today}.${extension}`
 }
 
-/** Tudo o que a API dá dos objetivos da conta, para guardar (JSON). */
-export function goalsToJson(user: User, goals: Goal[], exportedAt: string): string {
+/** Um objetivo com a evolução do progresso (no ficheiro JSON). */
+export type GoalWithHistory = Goal & { progressHistory: ProgressPoint[] }
+
+/** Tudo o que a API dá dos objetivos da conta, com a evolução do progresso, para guardar (JSON). */
+export function goalsToJson(user: User, goals: GoalWithHistory[], exportedAt: string): string {
   const data = { app: 'EduPath', exportedAt, account: { name: user.name, email: user.email }, goals }
   return JSON.stringify(data, null, 2)
 }

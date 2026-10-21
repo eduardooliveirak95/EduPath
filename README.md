@@ -8,6 +8,7 @@ O que tem:
 
 - painel com os objetivos em curso, os próximos passos e os prazos que estão a chegar
 - planos passo a passo para cada objetivo, pela ordem que se quiser
+- um gráfico com a evolução do progresso de cada objetivo, ao lado do ritmo que seria preciso para chegar aos 100% na data limite
 - avaliação no fim do prazo, com uma nota sobre como correu, que se pode mudar depois
 - histórico organizado por mês, com a taxa de sucesso geral e por categoria
 - repetir um objetivo que correu bem, ou tentar outra vez um que não correu, com o mesmo plano e datas novas

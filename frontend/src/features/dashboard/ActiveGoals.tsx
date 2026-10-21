@@ -10,10 +10,11 @@ interface ActiveGoalsProps {
   today: string
   onNewGoal: () => void
   onEditGoal: (goalId: number) => void
+  onShowProgress: (goalId: number) => void
   onShowAll: () => void
 }
 
-export function ActiveGoals({ goals, today, onNewGoal, onEditGoal, onShowAll }: ActiveGoalsProps) {
+export function ActiveGoals({ goals, today, onNewGoal, onEditGoal, onShowProgress, onShowAll }: ActiveGoalsProps) {
   const [filter, setFilter] = useState<Category | 'todos'>('todos')
 
   const categories = [...new Set(goals.map((goal) => goal.category))]
@@ -65,7 +66,13 @@ export function ActiveGoals({ goals, today, onNewGoal, onEditGoal, onShowAll }: 
 
           <div className="goals-grid">
             {visible.map((goal) => (
-              <GoalCard key={goal.id} goal={goal} today={today} onEdit={onEditGoal} />
+              <GoalCard
+                key={goal.id}
+                goal={goal}
+                today={today}
+                onEdit={onEditGoal}
+                onShowProgress={onShowProgress}
+              />
             ))}
           </div>
         </>

@@ -1,4 +1,4 @@
-import { CalendarCheck, Clock, ListChecks, Pencil } from 'lucide-react'
+import { CalendarCheck, ChartLine, Clock, ListChecks, Pencil } from 'lucide-react'
 import { CATEGORIES } from '../../data/categories'
 import type { Goal } from '../../types'
 import { daysBetween, describeDaysLeft, formatShortDate } from '../../utils/date'
@@ -18,11 +18,13 @@ interface GoalCardProps {
   onEdit: (goalId: number) => void
   /** Nos objetivos avaliados, mostra o botão para criar outro igual. */
   onRepeat?: (goalId: number) => void
+  /** Mostra o botão da evolução do progresso. */
+  onShowProgress?: (goalId: number) => void
   /** Mostra o estado ao lado da categoria (onde há objetivos com estados diferentes). */
   showStatus?: boolean
 }
 
-export function GoalCard({ goal, today, onEdit, onRepeat, showStatus = false }: GoalCardProps) {
+export function GoalCard({ goal, today, onEdit, onRepeat, onShowProgress, showStatus = false }: GoalCardProps) {
   const daysLeft = daysBetween(today, goal.targetDate)
   const { done, total } = planSummary(goal)
   const closed = goal.status === 'sucedido' || goal.status === 'nao_sucedido'
@@ -35,6 +37,17 @@ export function GoalCard({ goal, today, onEdit, onRepeat, showStatus = false }: 
           {showStatus && <StatusBadge status={goal.status} />}
         </div>
         <div className="goal-card__actions">
+          {onShowProgress && (
+            <button
+              type="button"
+              className="ghost-btn"
+              onClick={() => onShowProgress(goal.id)}
+              aria-label={`Evolução de "${goal.title}"`}
+              title="Evolução do progresso"
+            >
+              <ChartLine size={16} aria-hidden />
+            </button>
+          )}
           {closed && onRepeat && <RepeatButton goal={goal} onRepeat={onRepeat} />}
           <button
             type="button"

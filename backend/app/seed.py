@@ -14,7 +14,7 @@ from sqlalchemy import func, select, text
 from app.config import get_today
 from app.database import Base, SessionLocal, engine
 from app.migrate import upgrade_database
-from app.models import Category, Goal, Outcome, PlanStep, User
+from app.models import Category, Goal, Outcome, PlanStep, ProgressEntry, User
 from app.security import hash_password
 
 C = Category
@@ -117,6 +117,27 @@ def build_sample_goals(today: date, user_id: int) -> list[Goal]:
     ]
 
 
+def build_sample_history(goals: list[Goal], today: date) -> list[ProgressEntry]:
+    """A evolução do progresso dos exemplos: de 0% no início até à percentagem de agora, em
+    três subidas. O último registo é sempre a percentagem atual, como na app."""
+    entries: list[ProgressEntry] = []
+    for goal in goals:
+        end = goal.closed_at or min(today, goal.target_date)
+        span = (end - goal.start_date).days
+        final = goal.current_progress()
+        for step in range(4):
+            day = goal.start_date + timedelta(days=span * step // 3)
+            value = final if step == 3 else round(final * step * 0.35 / 5) * 5
+            last = entries[-1] if entries and entries[-1].goal_id == goal.id else None
+            if last is not None and last.progress == value:
+                continue  # só se regista quando muda
+            if last is not None and last.day == day:
+                last.progress = value
+            else:
+                entries.append(ProgressEntry(goal_id=goal.id, day=day, progress=value))
+    return entries
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description="Carrega os objetivos de exemplo.")
     parser.add_argument("--reset", action="store_true", help="apaga todos os dados antes")
@@ -144,7 +165,10 @@ def main() -> None:
             )
             session.add(user)
             session.flush()
-        session.add_all(build_sample_goals(get_today(), user.id))
+        goals = build_sample_goals(get_today(), user.id)
+        session.add_all(goals)
+        session.flush()  # para os objetivos já terem id
+        session.add_all(build_sample_history(goals, get_today()))
         session.commit()
     print(f"{len(SAMPLE_GOALS)} objetivos de exemplo criados.")
     print(f"Entra com {DEMO_EMAIL} e a password {DEMO_PASSWORD}.")

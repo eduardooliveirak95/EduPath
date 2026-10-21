@@ -9,6 +9,7 @@ import { LoginPage } from './features/auth/LoginPage'
 import { Dashboard } from './features/dashboard/Dashboard'
 import { GoalDialog } from './features/goals/GoalDialog'
 import { GoalsPage } from './features/goals/GoalsPage'
+import { ProgressDialog } from './features/goals/ProgressDialog'
 import { HistoryPage } from './features/history/HistoryPage'
 import { PlansPage } from './features/plans/PlansPage'
 import { SettingsPage } from './features/settings/SettingsPage'
@@ -46,6 +47,8 @@ function Workspace({ user, account, onSignOut }: WorkspaceProps) {
   // Pesquisa da barra de topo: mostra os resultados na página Objetivos.
   const [query, setQuery] = useState('')
   const [goalDialog, setGoalDialog] = useState<GoalDialogState>(null)
+  // Objetivo com a evolução do progresso aberta.
+  const [progressGoalId, setProgressGoalId] = useState<number | null>(null)
   const [today, setToday] = useState(() => toISODate(new Date()))
   const { goals, loadState, reload, actionError, dismissActionError, createGoal, updateGoal, deleteGoal, ...actions } =
     useGoals()
@@ -55,6 +58,7 @@ function Workspace({ user, account, onSignOut }: WorkspaceProps) {
     goalDialog && goalDialog.mode !== 'new' ? goals.find((goal) => goal.id === goalDialog.goalId) : undefined
   const editingGoal = goalDialog?.mode === 'edit' ? dialogGoal : undefined
   const repeatedGoal = goalDialog?.mode === 'repeat' ? dialogGoal : undefined
+  const progressGoal = goals.find((goal) => goal.id === progressGoalId)
 
   // Ao voltar à app, o dia pode já ser outro (os prazos e as notificações dependem dele).
   useEffect(() => onResume(() => setToday(toISODate(new Date()))), [])
@@ -125,6 +129,7 @@ function Workspace({ user, account, onSignOut }: WorkspaceProps) {
             onNewGoal={openNewGoal}
             onEditGoal={openEditGoal}
             onRepeatGoal={openRepeatGoal}
+            onShowProgress={setProgressGoalId}
           />
         )
       case 'planos':
@@ -144,6 +149,7 @@ function Workspace({ user, account, onSignOut }: WorkspaceProps) {
             actions={actions}
             onNewGoal={openNewGoal}
             onEditGoal={openEditGoal}
+            onShowProgress={setProgressGoalId}
             onNavigate={navigate}
           />
         )
@@ -198,6 +204,15 @@ function Workspace({ user, account, onSignOut }: WorkspaceProps) {
           onCreate={createGoal}
           onUpdate={updateGoal}
           onDelete={deleteGoal}
+        />
+      )}
+
+      {progressGoal && (
+        <ProgressDialog
+          key={progressGoal.id}
+          goal={progressGoal}
+          today={today}
+          onClose={() => setProgressGoalId(null)}
         />
       )}
 

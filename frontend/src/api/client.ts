@@ -7,6 +7,7 @@ import type {
   NewAccount,
   NewGoal,
   PlanStep,
+  ProgressPoint,
   Session,
   TemporaryPassword,
   User,
@@ -171,6 +172,9 @@ export const api = {
   updateGoal: (goalId: number, changes: GoalChanges) => request<Goal>(`/api/goals/${goalId}`, 'PATCH', changes),
 
   deleteGoal: (goalId: number) => request<void>(`/api/goals/${goalId}`, 'DELETE'),
+
+  /** A evolução do progresso: a percentagem de cada dia em que mudou, do mais antigo ao mais recente. */
+  goalProgress: (goalId: number) => request<ProgressPoint[]>(`/api/goals/${goalId}/progress`),
 
   evaluateGoal: (goalId: number, outcome: GoalOutcome, note?: string) =>
     request<Goal>(`/api/goals/${goalId}/evaluation`, 'POST', { outcome, note }),

@@ -109,6 +109,47 @@ def test_first_account_becomes_admin_when_upgrading(engine):
     ]
 
 
+def test_existing_goals_get_their_first_progress_entry(engine):
+    config = alembic_config()
+    with engine.begin() as connection:
+        config.attributes["connection"] = connection
+        command.upgrade(config, "0006")
+        connection.execute(
+            text(
+                "INSERT INTO goals (id, title, category, start_date, target_date, progress,"
+                " progress_from_steps, closed_at, outcome) VALUES"
+                " (1, 'À mão', 'saude', '2026-01-01', '2026-12-01', 35, false, NULL, NULL),"
+                " (2, 'Pelos passos', 'saude', '2026-01-01', '2026-12-01', 0, true, NULL, NULL),"
+                " (3, 'Sem passos', 'saude', '2026-01-01', '2026-12-01', 50, true, NULL, NULL),"
+                " (4, 'Avaliado', 'saude', '2026-01-01', '2026-03-01', 90, false, '2026-03-02',"
+                " 'sucedido')"
+            )
+        )
+        # 1 de 8 passos feitos: 12,5% dá 13, como no site.
+        for position in range(8):
+            connection.execute(
+                text(
+                    "INSERT INTO plan_steps (goal_id, title, done, position)"
+                    " VALUES (2, 'Passo', :done, :position)"
+                ),
+                {"done": position == 0, "position": position},
+            )
+        today = connection.execute(text("SELECT CURRENT_DATE")).scalar()
+
+    upgrade_database(engine)
+
+    with engine.connect() as connection:
+        rows = connection.execute(
+            text("SELECT goal_id, day, progress FROM progress_entries ORDER BY goal_id")
+        ).all()
+    assert [(goal_id, str(day), progress) for goal_id, day, progress in rows] == [
+        (1, str(today), 35),
+        (2, str(today), 13),
+        (3, str(today), 0),
+        (4, "2026-03-02", 90),
+    ]
+
+
 @pytest.mark.parametrize(
     ("environ", "expected"),
     [({}, True), ({"VERCEL_ENV": "production"}, True), ({"VERCEL_ENV": "preview"}, False)],

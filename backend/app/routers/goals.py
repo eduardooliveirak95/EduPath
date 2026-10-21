@@ -4,7 +4,8 @@ from fastapi import APIRouter, HTTPException, status
 from sqlalchemy import ColumnElement, and_, select
 
 from app.deps import CurrentUserDep, SessionDep, TodayDep, get_goal_or_404
-from app.models import Category, Goal, GoalStatus, PlanStep
+from app.models import Category, Goal, GoalStatus, PlanStep, ProgressEntry
+from app.progress import record_progress
 from app.schemas import (
     DATES_ORDER_ERROR,
     EvaluationCreate,
@@ -12,6 +13,7 @@ from app.schemas import (
     GoalRead,
     GoalUpdate,
     PlanStepEdit,
+    ProgressPoint,
 )
 
 router = APIRouter(prefix="/api/goals", tags=["objetivos"])
@@ -85,6 +87,8 @@ def create_goal(payload: GoalCreate, session: SessionDep, user: CurrentUserDep, 
         ],
     )
     session.add(goal)
+    session.flush()  # para o objetivo já ter id
+    record_progress(session, goal, today)
     session.commit()
     session.refresh(goal)
     return GoalRead.from_goal(goal, today)
@@ -100,7 +104,7 @@ def update_goal(
     goal_id: int, payload: GoalUpdate, session: SessionDep, user: CurrentUserDep, today: TodayDep
 ):
     """Atualiza só os campos enviados (ex.: a percentagem de progresso)."""
-    goal = get_goal_or_404(session, goal_id, user)
+    goal = get_goal_or_404(session, goal_id, user, lock=True)
     changes = payload.changes()
     changes.pop("plan", None)
     if "outcome_note" in changes:
@@ -115,10 +119,21 @@ def update_goal(
         replace_plan(goal, payload.plan)
     if goal.target_date < goal.start_date:
         raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, DATES_ORDER_ERROR)
+    record_progress(session, goal, today)
 
     session.commit()
     session.refresh(goal)
     return GoalRead.from_goal(goal, today)
+
+
+@router.get("/{goal_id}/progress", response_model=list[ProgressPoint])
+def progress_history(goal_id: int, session: SessionDep, user: CurrentUserDep):
+    """A evolução do progresso: a percentagem de cada dia em que mudou, do mais antigo ao
+    mais recente. O último valor é o que o objetivo mostra agora."""
+    get_goal_or_404(session, goal_id, user)
+    return session.scalars(
+        select(ProgressEntry).where(ProgressEntry.goal_id == goal_id).order_by(ProgressEntry.day)
+    ).all()
 
 
 @router.delete("/{goal_id}", status_code=status.HTTP_204_NO_CONTENT)

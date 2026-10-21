@@ -173,6 +173,24 @@ def steps_progress(plan: list["PlanStep"]) -> int:
     return (done * 100 + len(plan) // 2) // len(plan)
 
 
+class ProgressEntry(Base):
+    """A percentagem de um objetivo num dia, para a evolução do progresso. Só uma por dia (a
+    última desse dia) e só quando muda: ver `record_progress` (app/progress.py)."""
+
+    __tablename__ = "progress_entries"
+    __table_args__ = (
+        UniqueConstraint("goal_id", "day", name="uq_progress_entries_goal_id_day"),
+        CheckConstraint("progress BETWEEN 0 AND 100", name="ck_progress_entries_progress_range"),
+    )
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    goal_id: Mapped[int] = mapped_column(
+        ForeignKey("goals.id", ondelete="CASCADE", name="fk_progress_entries_goal_id_goals")
+    )
+    day: Mapped[date]
+    progress: Mapped[int]
+
+
 class PlanStep(Base):
     __tablename__ = "plan_steps"
 

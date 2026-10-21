@@ -24,10 +24,20 @@ interface DashboardProps {
   actions: GoalActions
   onNewGoal: () => void
   onEditGoal: (goalId: number) => void
+  onShowProgress: (goalId: number) => void
   onNavigate: (page: PageId) => void
 }
 
-export function Dashboard({ userName, goals, today, actions, onNewGoal, onEditGoal, onNavigate }: DashboardProps) {
+export function Dashboard({
+  userName,
+  goals,
+  today,
+  actions,
+  onNewGoal,
+  onEditGoal,
+  onShowProgress,
+  onNavigate,
+}: DashboardProps) {
   const [hour] = useState(() => new Date().getHours())
   const withStatus = (...statuses: GoalStatus[]) => goals.filter((goal) => statuses.includes(goal.status))
 
@@ -88,6 +98,7 @@ export function Dashboard({ userName, goals, today, actions, onNewGoal, onEditGo
             today={today}
             onNewGoal={onNewGoal}
             onEditGoal={onEditGoal}
+            onShowProgress={onShowProgress}
             onShowAll={() => onNavigate('objetivos')}
           />
           <NextSteps goals={active} onCompleteStep={(goalId, stepId) => actions.setStepDone(goalId, stepId, true)} />

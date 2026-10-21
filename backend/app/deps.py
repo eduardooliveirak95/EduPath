@@ -49,9 +49,15 @@ def get_admin_user(user: CurrentUserDep) -> User:
 AdminDep = Annotated[User, Depends(get_admin_user)]
 
 
-def get_goal_or_404(session: Session, goal_id: int, user: User) -> Goal:
-    """O objetivo, se for desta conta. Os de outras contas também dão 404 (não existem para ela)."""
-    goal = session.get(Goal, goal_id)
+def get_goal_or_404(session: Session, goal_id: int, user: User, *, lock: bool = False) -> Goal:
+    """O objetivo, se for desta conta. Os de outras contas também dão 404 (não existem para ela).
+
+    Com `lock`, fica bloqueado até ao fim do pedido (SELECT ... FOR UPDATE, no Postgres): dois
+    pedidos que mudam o mesmo objetivo ao mesmo tempo (ex.: marcar dois passos seguidos) correm
+    um depois do outro, e o segundo já vê o que o primeiro mudou. Sem isso, a evolução do
+    progresso podia ficar com um valor antigo, ou falhar ao criar o registo do dia duas vezes.
+    """
+    goal = session.get(Goal, goal_id, with_for_update=lock)
     if goal is None or goal.user_id != user.id:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Objetivo não encontrado.")
     return goal

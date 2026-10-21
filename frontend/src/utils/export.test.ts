@@ -63,12 +63,13 @@ describe('goalsToCsv', () => {
 })
 
 describe('goalsToJson', () => {
-  it('guarda a conta, a data e os objetivos tal como vêm da API', () => {
-    expect(JSON.parse(goalsToJson(user, [goal], '2026-10-20T18:00:00.000Z'))).toEqual({
+  it('guarda a conta, a data e os objetivos tal como vêm da API, com a evolução do progresso', () => {
+    const withHistory = { ...goal, progressHistory: [{ day: '2026-01-01', progress: 0 }] }
+    expect(JSON.parse(goalsToJson(user, [withHistory], '2026-10-20T18:00:00.000Z'))).toEqual({
       app: 'EduPath',
       exportedAt: '2026-10-20T18:00:00.000Z',
       account: { name: 'Eduardo', email: 'eu@exemplo.pt' },
-      goals: [goal],
+      goals: [withHistory],
     })
   })
 })

@@ -36,6 +36,12 @@ export interface Goal {
   updatedAt: string
 }
 
+/** A percentagem de um objetivo num dia (o último valor desse dia), para a evolução do progresso. */
+export interface ProgressPoint {
+  day: string
+  progress: number
+}
+
 export interface NewGoal {
   title: string
   description?: string

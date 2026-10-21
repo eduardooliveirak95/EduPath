@@ -163,6 +163,13 @@ class GoalRead(ApiModel):
         return cls.model_validate({**data, **derived})
 
 
+class ProgressPoint(ApiModel):
+    """A percentagem de um objetivo num dia (o último valor desse dia)."""
+
+    day: date
+    progress: int
+
+
 class EvaluationCreate(ApiModel):
     outcome: Outcome
     note: LongText | None = None

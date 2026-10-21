@@ -4,6 +4,7 @@ import type { NewAccount, User } from '../types'
 import { onResume } from '../utils/resume'
 
 const SESSION_ENDED = 'A tua sessão terminou. Entra outra vez.'
+const ACCOUNT_DELETED = 'A tua conta foi apagada, com os objetivos e os planos.'
 
 /** A conta com sessão iniciada (ou null), e as ações para entrar, sair e mudar a conta. */
 export function useAuth() {
@@ -51,6 +52,11 @@ export function useAuth() {
     updateProfile: async (name: string) => setUser(await auth.updateProfile(name)),
     changePassword: async (currentPassword: string, newPassword: string) =>
       setUser(await auth.changePassword(currentPassword, newPassword)),
+    deleteAccount: async (password: string) => {
+      await auth.deleteAccount(password)
+      setNotice(ACCOUNT_DELETED)
+      setUser(null)
+    },
     signOut: () => {
       auth.signOut()
       setNotice(null)
@@ -59,4 +65,4 @@ export function useAuth() {
   }
 }
 
-export type AuthActions = Pick<ReturnType<typeof useAuth>, 'updateProfile' | 'changePassword'>
+export type AuthActions = Pick<ReturnType<typeof useAuth>, 'updateProfile' | 'changePassword' | 'deleteAccount'>

@@ -14,7 +14,7 @@ O que tem:
 - notificações dos prazos a chegar e dos objetivos por avaliar
 - pesquisa, e filtros por estado e por categoria
 - categorias: saúde, carreira, finanças, aprendizagem e pessoal
-- contas privadas, em que cada pessoa só vê os seus objetivos; entra-se por convite
+- contas privadas, em que cada pessoa só vê os seus objetivos; entra-se por convite, e quem quiser pode apagar a sua conta, com tudo o que tem
 - descarregar os próprios objetivos num ficheiro, para guardar ou abrir numa folha de cálculo
 
 Funciona no computador e no telemóvel, em tema claro ou escuro.

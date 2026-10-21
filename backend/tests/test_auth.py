@@ -278,6 +278,49 @@ def test_change_password_checks_the_current_one(client):
     assert client.get("/api/goals").status_code == 200
 
 
+# Apagar a própria conta
+
+
+def test_delete_own_account_with_everything_in_it(
+    client, user, create_goal, admin_client, session_factory
+):
+    create_goal(plan=[{"title": "Passo"}])
+    other_device = client_for(user)
+
+    response = client.request("DELETE", "/api/auth/me", json={"password": TEST_PASSWORD})
+
+    assert response.status_code == 204
+    assert client.get("/api/goals").status_code == 401
+    assert other_device.get("/api/goals").status_code == 401
+    assert [a["name"] for a in admin_client.get("/api/admin/users").json()] == ["Admin"]
+    with session_factory() as db:
+        assert db.scalars(select(Goal)).all() == []  # os passos vão com os objetivos (CASCADE)
+    # O email fica livre: dá para voltar a criar uma conta com ele (com um convite novo).
+    code = admin_client.post("/api/invites").json()["code"]
+    again = {"name": "Outra vez", "email": user.email, "password": "uma-password-longa"}
+    assert client.post("/api/auth/register", json=again | {"inviteCode": code}).status_code == 201
+
+
+def test_delete_own_account_needs_the_password(client, create_goal):
+    create_goal()
+
+    response = client.request("DELETE", "/api/auth/me", json={"password": "errada"})
+
+    # 403 e não 401, para o frontend não terminar a sessão.
+    assert response.status_code == 403
+    assert response.json()["detail"] == "A password está errada."
+    assert client.request("DELETE", "/api/auth/me").status_code == 422
+    assert len(client.get("/api/goals").json()) == 1
+
+
+def test_admin_cannot_delete_own_account(admin_client):
+    response = admin_client.request("DELETE", "/api/auth/me", json={"password": TEST_PASSWORD})
+
+    assert response.status_code == 409
+    assert response.json()["detail"] == "A conta do administrador não pode ser apagada."
+    assert admin_client.get("/api/auth/me").status_code == 200
+
+
 # Cada conta só vê os seus objetivos
 
 

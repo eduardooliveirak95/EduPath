@@ -11,6 +11,7 @@ from app.deps import CurrentUserDep, NowDep, SessionDep, SettingsDep, TodayDep
 from app.invite_codes import normalize_invite_code
 from app.models import Goal, Invite, InviteStatus, LoginFailure, User
 from app.schemas import (
+    AccountDelete,
     LoginRequest,
     PasswordChange,
     ProfileUpdate,
@@ -175,6 +176,24 @@ def update_profile(payload: ProfileUpdate, user: CurrentUserDep, session: Sessio
     user.name = payload.name
     session.commit()
     return user
+
+
+@router.delete("/me", status_code=status.HTTP_204_NO_CONTENT)
+def delete_account(payload: AccountDelete, user: CurrentUserDep, session: SessionDep):
+    """Apaga a própria conta e tudo o que é dela: objetivos, passos e os convites que criou.
+
+    Pede a password, para ninguém a apagar só por ter a app aberta. A conta do
+    administrador não se apaga (409): só ele convida e dá passwords novas.
+    """
+    if user.is_admin:
+        raise HTTPException(
+            status.HTTP_409_CONFLICT, "A conta do administrador não pode ser apagada."
+        )
+    # 403 e não 401: um 401 faria o frontend terminar a sessão.
+    if not verify_password(user.password_hash, payload.password):
+        raise HTTPException(status.HTTP_403_FORBIDDEN, "A password está errada.")
+    session.delete(user)
+    session.commit()
 
 
 @router.post("/password", response_model=SessionRead)

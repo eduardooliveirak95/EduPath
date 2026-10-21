@@ -22,10 +22,10 @@ import { onResume } from './utils/resume'
 import './components/layout/layout.css'
 
 export default function App() {
-  const { user, notice, signIn, register, signOut, updateProfile, changePassword } = useAuth()
+  const { user, notice, signIn, register, signOut, updateProfile, changePassword, deleteAccount } = useAuth()
   // Sem sessão, só o ecrã de entrada. Ao sair, o Workspace desmonta e esquece os dados.
   if (!user) return <LoginPage notice={notice} onSignIn={signIn} onRegister={register} />
-  return <Workspace user={user} account={{ updateProfile, changePassword }} onSignOut={signOut} />
+  return <Workspace user={user} account={{ updateProfile, changePassword, deleteAccount }} onSignOut={signOut} />
 }
 
 interface WorkspaceProps {

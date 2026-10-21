@@ -222,6 +222,12 @@ class PasswordChange(ApiModel):
     new_password: NewPassword
 
 
+class AccountDelete(ApiModel):
+    """Apagar a própria conta: pede a password, para confirmar."""
+
+    password: Password
+
+
 class SessionRead(ApiModel):
     """Resposta de entrar, criar conta, renovar a sessão e mudar a password."""
 

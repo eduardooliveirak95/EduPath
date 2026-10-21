@@ -1,5 +1,6 @@
-import { useState, type FormEvent } from 'react'
-import { Download, KeyRound, UserRound } from 'lucide-react'
+import { useRef, useState, type FormEvent } from 'react'
+import { flushSync } from 'react-dom'
+import { Download, KeyRound, Trash2, UserRound } from 'lucide-react'
 import { api, errorMessage } from '../../api/client'
 import { Panel } from '../../components/ui/Panel'
 import type { AuthActions } from '../../hooks/useAuth'
@@ -234,11 +235,95 @@ function ExportPanel({ user }: { user: User }) {
   )
 }
 
+interface DeleteAccountPanelProps {
+  email: string
+  onDeleteAccount: AuthActions['deleteAccount']
+}
+
+/** Só nas contas que não são do administrador: a dele não se apaga (a API também recusa). */
+function DeleteAccountPanel({ email, onDeleteAccount }: DeleteAccountPanelProps) {
+  const passwordRef = useRef<HTMLInputElement>(null)
+  const [confirming, setConfirming] = useState(false)
+  const [password, setPassword] = useState('')
+  const [state, setState] = useState<FormState>({ kind: 'idle' })
+
+  const askToConfirm = () => {
+    // O botão desaparece; o foco passa para a password, que é o passo seguinte.
+    flushSync(() => setConfirming(true))
+    passwordRef.current?.focus()
+  }
+
+  const cancel = () => {
+    setConfirming(false)
+    setPassword('')
+    setState({ kind: 'idle' })
+  }
+
+  const submit = async (event: FormEvent) => {
+    event.preventDefault()
+    setState({ kind: 'saving' })
+    try {
+      // Se correr bem, a sessão termina e aparece o ecrã de entrada (esta página desaparece).
+      await onDeleteAccount(password)
+    } catch (caught) {
+      setState({ kind: 'error', message: errorMessage(caught) })
+    }
+  }
+
+  return (
+    <Panel
+      title="Apagar a conta"
+      icon={<Trash2 size={18} aria-hidden />}
+      subtitle="Apaga a conta e todos os teus objetivos e planos. Não dá para desfazer."
+    >
+      {confirming ? (
+        <form className="settings-form" onSubmit={submit}>
+          <input type="email" name="email" autoComplete="username" value={email} hidden readOnly />
+          <label className="field">
+            <span className="field__label">Password, para confirmar</span>
+            <input
+              ref={passwordRef}
+              className="input"
+              type="password"
+              autoComplete="current-password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              maxLength={200}
+              required
+            />
+          </label>
+          <FormFeedback state={state} />
+          <div className="settings-form__actions">
+            <button type="button" className="btn btn--ghost" onClick={cancel} disabled={state.kind === 'saving'}>
+              Cancelar
+            </button>
+            <button type="submit" className="btn btn--danger-strong" disabled={state.kind === 'saving'}>
+              <Trash2 size={16} aria-hidden /> {state.kind === 'saving' ? 'A apagar…' : 'Apagar para sempre'}
+            </button>
+          </div>
+        </form>
+      ) : (
+        <div className="settings-form">
+          <p className="settings-form__text">
+            Se quiseres guardar os teus objetivos, descarrega-os antes em "Os teus dados". Para voltares a usar o
+            EduPath depois, precisas de um convite novo.
+          </p>
+          <div className="settings-form__actions">
+            <button type="button" className="btn btn--danger" onClick={askToConfirm}>
+              <Trash2 size={16} aria-hidden /> Apagar a minha conta
+            </button>
+          </div>
+        </div>
+      )}
+    </Panel>
+  )
+}
+
 interface SettingsPageProps extends AuthActions {
   user: User
 }
 
-export function SettingsPage({ user, updateProfile, changePassword }: SettingsPageProps) {
+export function SettingsPage({ user, updateProfile, changePassword, deleteAccount }: SettingsPageProps) {
   return (
     <div className="settings">
       <header className="settings__intro">
@@ -248,6 +333,7 @@ export function SettingsPage({ user, updateProfile, changePassword }: SettingsPa
       <ProfileForm user={user} onUpdateProfile={updateProfile} />
       <PasswordForm email={user.email} onChangePassword={changePassword} />
       <ExportPanel user={user} />
+      {!user.isAdmin && <DeleteAccountPanel email={user.email} onDeleteAccount={deleteAccount} />}
     </div>
   )
 }

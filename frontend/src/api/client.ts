@@ -146,6 +146,12 @@ export const auth = {
   changePassword: async (currentPassword: string, newPassword: string) =>
     startSession(await request<Session>('/api/auth/password', 'POST', { currentPassword, newPassword })),
 
+  /** Apaga a conta da sessão, com tudo o que é dela, e termina a sessão neste browser. */
+  deleteAccount: async (password: string) => {
+    await request<void>('/api/auth/me', 'DELETE', { password })
+    saveSession(null)
+  },
+
   signOut: () => saveSession(null),
 
   /** Avisa quando a API recusa o token (ex.: sessão expirada). Devolve a função para cancelar. */

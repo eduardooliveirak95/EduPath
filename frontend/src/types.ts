@@ -27,7 +27,7 @@ export interface Goal {
   progress: number
   /** O progresso é calculado pelos passos feitos, e não escolhido à mão. */
   progressFromSteps: boolean
-  /** Objetivo recorrente: quantas vezes por semana (de segunda a domingo). O progresso é o das semanas cumpridas. */
+  /** Objetivo recorrente: quantas vezes por semana (de segunda a domingo). O progresso é o dos dias feitos (até às vezes pedidas em cada semana). */
   timesPerWeek: number | null
   /** Dias registados num objetivo recorrente (AAAA-MM-DD), por ordem. */
   checkins: string[]

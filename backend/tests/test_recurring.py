@@ -18,17 +18,22 @@ def days(*offsets: int) -> list[date]:
 
 
 def test_weeks_go_from_monday_to_sunday():
-    # Três semanas inteiras, 2 vezes por semana: a 1.ª e a 3.ª cumpridas.
+    # Três semanas inteiras, 2 vezes por semana: a 1.ª e a 3.ª cumpridas, 5 dos 6 dias feitos.
     start, target = MONDAY, MONDAY + timedelta(days=20)
-    assert weeks_summary(start, target, 2, days(0, 6, 7, 15, 16)) == (2, 3)
-    assert weeks_summary(start, target, 2, []) == (0, 3)
+    assert weeks_summary(start, target, 2, days(0, 6, 7, 15, 16)) == (2, 3, 5, 6)
+    assert weeks_summary(start, target, 2, []) == (0, 3, 0, 6)
+
+
+def test_extra_days_do_not_make_up_for_another_week():
+    start, target = MONDAY, MONDAY + timedelta(days=13)
+    assert weeks_summary(start, target, 2, days(0, 1, 2, 3)) == (1, 2, 2, 4)
 
 
 def test_incomplete_weeks_ask_only_for_the_days_they_have():
     # Começa num sábado e acaba numa terça: a 1.ª semana tem 2 dias, a última também.
     start, target = MONDAY + timedelta(days=5), MONDAY + timedelta(days=15)
     assert weeks_summary(start, target, 3, days(5, 6)).met == 1
-    assert weeks_summary(start, target, 3, days(5, 6, 14, 15)) == (2, 3)
+    assert weeks_summary(start, target, 3, days(5, 6, 14, 15)) == (2, 3, 4, 7)
     # Os dias fora do objetivo não contam.
     assert weeks_summary(start, target, 1, days(0, 16)).met == 0
 
@@ -43,7 +48,7 @@ def recurring_goal(create_goal, **fields) -> dict:
     return create_goal(**defaults | fields)
 
 
-def test_recurring_goal_progress_is_the_share_of_weeks_met(client, create_goal):
+def test_recurring_goal_progress_counts_each_day_done(client, create_goal):
     goal = recurring_goal(create_goal, progress=50, progressFromSteps=True)
     assert (goal["timesPerWeek"], goal["checkins"], goal["weeks"]) == (
         3,
@@ -54,10 +59,12 @@ def test_recurring_goal_progress_is_the_share_of_weeks_met(client, create_goal):
     url = f"/api/goals/{goal['id']}/checkins"
     set_today(MONDAY + timedelta(days=2))  # quarta-feira
 
-    for day in days(0, 1):
-        response = client.put(f"{url}/{day}")
-        assert response.status_code == 200, response.text
-    assert response.json()["weeks"] == {"met": 0, "total": 4}
+    # Cada dia feito conta logo, mesmo sem a semana estar cumprida: 1 dos 12 pedidos dá 8%.
+    first = client.put(f"{url}/{MONDAY}")
+    assert first.status_code == 200, first.text
+    assert (first.json()["weeks"], first.json()["progress"]) == ({"met": 0, "total": 4}, 8)
+    response = client.put(f"{url}/{MONDAY + timedelta(days=1)}")
+    assert (response.json()["weeks"], response.json()["progress"]) == ({"met": 0, "total": 4}, 17)
     updated = client.put(f"{url}/{MONDAY}").json()  # o mesmo dia outra vez não muda nada
     assert updated["checkins"] == [day.isoformat() for day in days(0, 1)]
 
@@ -65,7 +72,7 @@ def test_recurring_goal_progress_is_the_share_of_weeks_met(client, create_goal):
     assert (updated["weeks"], updated["progress"]) == ({"met": 1, "total": 4}, 25)
 
     updated = client.delete(f"{url}/{MONDAY + timedelta(days=1)}").json()
-    assert (updated["weeks"]["met"], updated["progress"]) == (0, 0)
+    assert (updated["weeks"]["met"], updated["progress"]) == (0, 17)
     assert updated["checkins"] == [day.isoformat() for day in days(0, 2)]
 
 

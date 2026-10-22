@@ -142,7 +142,7 @@ class Goal(Base):
     progress: Mapped[int] = mapped_column(default=0)
     progress_from_steps: Mapped[bool] = mapped_column(default=False, server_default=false())
     # Objetivo recorrente: quantas vezes por semana (de segunda a domingo). Com isto, a
-    # percentagem é a das semanas cumpridas (`weeks`), e não a escolhida nem a dos passos.
+    # percentagem é a dos dias feitos (`weeks`), e não a escolhida nem a dos passos.
     times_per_week: Mapped[int | None]
     outcome: Mapped[Outcome | None] = mapped_column(_string_enum(Outcome))
     outcome_note: Mapped[str | None] = mapped_column(Text)
@@ -168,24 +168,27 @@ class Goal(Base):
         return GoalStatus.POR_AVALIAR if self.target_date < today else GoalStatus.EM_CURSO
 
     def weeks(self) -> "WeeksSummary | None":
-        """Num objetivo recorrente, as semanas que tem e quantas foram cumpridas."""
+        """Num objetivo recorrente, as semanas que tem, quantas foram cumpridas e os dias."""
         if self.times_per_week is None:
             return None
         days = (checkin.day for checkin in self.checkins)
         return weeks_summary(self.start_date, self.target_date, self.times_per_week, days)
 
     def current_progress(self) -> int:
-        """Percentagem do objetivo: a das semanas cumpridas num objetivo recorrente, a dos
-        passos feitos se é calculada por eles, ou a escolhida."""
+        """Percentagem do objetivo: a dos dias feitos num objetivo recorrente, a dos passos
+        feitos se é calculada por eles, ou a escolhida."""
         weeks = self.weeks()
         if weeks is not None:
-            return (weeks.met * 100 + weeks.total // 2) // weeks.total
+            return (weeks.done * 100 + weeks.needed // 2) // weeks.needed
         return steps_progress(self.plan) if self.progress_from_steps else self.progress
 
 
 class WeeksSummary(NamedTuple):
     met: int
     total: int
+    # Os dias que contam para a percentagem (em cada semana, até aos pedidos) e os pedidos.
+    done: int
+    needed: int
 
 
 def weeks_summary(
@@ -193,20 +196,24 @@ def weeks_summary(
 ) -> WeeksSummary:
     """As semanas (de segunda a domingo) entre o início e a data limite, e quantas foram cumpridas.
 
-    Uma semana fica cumprida com `times_per_week` dias registados, ou com todos os dias dela
-    que caem no objetivo, se forem menos (a primeira e a última podem estar incompletas). As
-    semanas que ainda não chegaram contam no total: a percentagem só chega a 100% no fim.
+    Cada semana pede `times_per_week` dias, ou todos os dias dela que caem no objetivo, se forem
+    menos (a primeira e a última podem estar incompletas), e fica cumprida com eles. A
+    percentagem é a dos dias pedidos que já foram feitos: cada dia marcado conta logo, e os dias
+    a mais numa semana não compensam outra. As semanas que ainda não chegaram contam nos
+    pedidos: a percentagem só chega a 100% no fim.
     """
     first_monday = start - timedelta(days=start.weekday())
     total = (target - first_monday).days // 7 + 1
     per_week = Counter((day - first_monday).days // 7 for day in days if start <= day <= target)
-    met = 0
+    met = done = needed = 0
     for week in range(total):
         monday = first_monday + timedelta(weeks=week)
         days_in_goal = (min(monday + timedelta(days=6), target) - max(monday, start)).days + 1
-        if per_week[week] >= min(times_per_week, days_in_goal):
-            met += 1
-    return WeeksSummary(met, total)
+        asked = min(times_per_week, days_in_goal)
+        met += per_week[week] >= asked
+        done += min(per_week[week], asked)
+        needed += asked
+    return WeeksSummary(met, total, done, needed)
 
 
 class GoalCheckin(Base):

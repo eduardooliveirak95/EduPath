@@ -159,8 +159,9 @@ class GoalRead(ApiModel):
     target_date: date
     progress: int = Field(
         description=(
-            "Num objetivo recorrente, a percentagem de semanas cumpridas; com progressFromSteps,"
-            " a de passos feitos (sem passos, 0)."
+            "Num objetivo recorrente, a percentagem dos dias pedidos (as vezes por semana até à"
+            " data limite) que foram feitos; com progressFromSteps, a de passos feitos (sem"
+            " passos, 0)."
         )
     )
     progress_from_steps: bool

@@ -9,6 +9,7 @@ from alembic.script import ScriptDirectory
 from sqlalchemy import Engine, inspect, text
 from sqlalchemy.exc import IntegrityError
 
+from app.config import get_today
 from app.database import Base, create_db_engine
 from app.migrate import alembic_config, should_migrate, upgrade_database
 from tests.conftest import TEST_DATABASE_URL
@@ -183,6 +184,54 @@ def test_changing_the_goals_table_keeps_what_depends_on_it(engine):
             assert connection.exec_driver_sql("PRAGMA foreign_keys").scalar() == 1
     with pytest.raises(IntegrityError), engine.begin() as connection:
         connection.execute(text("UPDATE goals SET times_per_week = 8"))
+
+
+def test_recurring_goals_history_ends_in_the_new_progress(engine):
+    # A 0009 passa a percentagem dos recorrentes a contar cada dia feito, e não só as semanas.
+    config = alembic_config()
+    today = get_today()
+    with engine.begin() as connection:
+        config.attributes["connection"] = connection
+        command.upgrade(config, "0008")
+        # Quatro semanas inteiras: 3 vezes por semana (1 dia feito: 8%) ou 1 vez (25%, igual).
+        connection.execute(
+            text(
+                "INSERT INTO goals (id, title, category, start_date, target_date, progress,"
+                " times_per_week) VALUES"
+                " (1, 'Ginásio', 'saude', '2026-06-15', '2026-07-12', 0, 3),"
+                " (2, 'Correr', 'saude', '2026-06-15', '2026-07-12', 0, 1),"
+                " (3, 'Nadar', 'saude', '2026-06-15', '2026-07-12', 0, 3),"
+                " (4, 'Normal', 'saude', '2026-06-15', '2026-07-12', 30, NULL)"
+            )
+        )
+        connection.execute(
+            text(
+                "INSERT INTO goal_checkins (goal_id, day) VALUES"
+                " (1, '2026-06-15'), (2, '2026-06-15'), (3, '2026-06-16')"
+            )
+        )
+        connection.execute(
+            text(
+                "INSERT INTO progress_entries (goal_id, day, progress) VALUES"
+                " (1, '2026-06-15', 0), (2, '2026-06-15', 25), (3, :today, 0),"
+                " (4, '2026-06-15', 30)"
+            ),
+            {"today": str(today)},
+        )
+
+    upgrade_database(engine)
+
+    with engine.connect() as connection:
+        rows = connection.execute(
+            text("SELECT goal_id, day, progress FROM progress_entries ORDER BY goal_id, day")
+        ).all()
+    assert [(goal_id, str(day), progress) for goal_id, day, progress in rows] == [
+        (1, "2026-06-15", 0),
+        (1, str(today), 8),
+        (2, "2026-06-15", 25),
+        (3, str(today), 8),
+        (4, "2026-06-15", 30),
+    ]
 
 
 @pytest.mark.parametrize(

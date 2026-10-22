@@ -330,8 +330,8 @@ export function GoalDialog({ today, goal, draft, onClose, onCreate, onUpdate, on
                   {goal?.weeks && <strong className="field__value">{goal.progress}%</strong>}
                 </span>
                 <span className="field__hint">
-                  É a percentagem de semanas cumpridas (de segunda a domingo), até à data limite. Os dias marcam-se
-                  no cartão do objetivo.
+                  É a percentagem dos dias feitos, das vezes pedidas por semana (de segunda a domingo) até à data
+                  limite. Cada dia conta logo e marca-se no cartão do objetivo.
                 </span>
               </>
             ) : progressFromSteps ? (

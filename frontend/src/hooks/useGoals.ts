@@ -129,7 +129,7 @@ export function useGoals() {
       }),
 
     // Num objetivo recorrente, marca ou desmarca um dia. Mostra-o logo e põe depois o objetivo
-    // que a API devolve, com a percentagem (das semanas cumpridas) já calculada por ela.
+    // que a API devolve, com a percentagem (dos dias feitos) já calculada por ela.
     setCheckin: (goalId: number, day: string, done: boolean) =>
       run(async () => {
         const mark = (value: boolean) =>

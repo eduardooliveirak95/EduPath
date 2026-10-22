@@ -28,7 +28,7 @@ test('descarrega os objetivos em CSV e em JSON', async ({ page }) => {
   expect(json.name).toBe(`edupath-${today()}.json`)
   const data = JSON.parse(json.content)
   expect(data.account).toEqual({ name: DEMO.name, email: DEMO.email })
-  expect(data.goals).toHaveLength(12)
+  expect(data.goals).toHaveLength(13)
   const run = data.goals.find((goal: { title: string }) => goal.title === 'Correr uma meia maratona')
   // Cada objetivo leva a evolução do progresso; o último registo é a percentagem de agora.
   expect(run.progressHistory.map((point: { progress: number }) => point.progress)).toEqual([0, 15, 30, 45])

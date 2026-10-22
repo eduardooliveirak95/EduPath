@@ -27,6 +27,7 @@ interface GoalsPageProps {
   onEditGoal: (goalId: number) => void
   onRepeatGoal: (goalId: number) => void
   onShowProgress: (goalId: number) => void
+  onCheckin: (goalId: number, day: string, done: boolean) => void
 }
 
 /** Todos os objetivos, com filtros por estado e categoria, pesquisa e ordenação. */
@@ -39,6 +40,7 @@ export function GoalsPage({
   onEditGoal,
   onRepeatGoal,
   onShowProgress,
+  onCheckin,
 }: GoalsPageProps) {
   const [status, setStatus] = useState<GoalStatus | 'todos'>('todos')
   const [category, setCategory] = useState<Category | 'todas'>('todas')
@@ -153,6 +155,7 @@ export function GoalsPage({
                   onEdit={onEditGoal}
                   onRepeat={onRepeatGoal}
                   onShowProgress={onShowProgress}
+                  onCheckin={onCheckin}
                   showStatus
                 />
               ))}

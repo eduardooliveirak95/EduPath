@@ -5,7 +5,7 @@ from sqlalchemy import Connection
 
 import app.models  # noqa: F401  (regista as tabelas em Base.metadata)
 from app.config import get_settings
-from app.database import Base, create_db_engine
+from app.database import Base, create_db_engine, foreign_keys_off
 
 
 def run_migrations(connection: Connection) -> None:
@@ -25,6 +25,6 @@ if connection is not None:
 else:
     # Chamado pela linha de comandos: liga-se ao DATABASE_URL.
     engine = create_db_engine(get_settings().database_url)
-    with engine.begin() as connection:
+    with engine.connect() as connection, foreign_keys_off(connection), connection.begin():
         run_migrations(connection)
     engine.dispose()

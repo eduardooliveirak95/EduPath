@@ -1,9 +1,10 @@
-import { CalendarCheck, ChartLine, Clock, ListChecks, Pencil } from 'lucide-react'
+import { CalendarCheck, ChartLine, Clock, ListChecks, Pencil, Repeat } from 'lucide-react'
 import { CATEGORIES } from '../../data/categories'
 import type { Goal } from '../../types'
 import { daysBetween, describeDaysLeft, formatShortDate } from '../../utils/date'
 import { closedOn, planSummary } from '../../utils/goals'
 import { RepeatButton } from './RepeatButton'
+import { WeekTracker } from './WeekTracker'
 import { CategoryBadge } from '../ui/CategoryBadge'
 import { ProgressBar } from '../ui/ProgressBar'
 import { StatusBadge } from '../ui/StatusBadge'
@@ -20,11 +21,21 @@ interface GoalCardProps {
   onRepeat?: (goalId: number) => void
   /** Mostra o botão da evolução do progresso. */
   onShowProgress?: (goalId: number) => void
+  /** Num objetivo recorrente em curso, deixa marcar os dias desta semana. */
+  onCheckin?: (goalId: number, day: string, done: boolean) => void
   /** Mostra o estado ao lado da categoria (onde há objetivos com estados diferentes). */
   showStatus?: boolean
 }
 
-export function GoalCard({ goal, today, onEdit, onRepeat, onShowProgress, showStatus = false }: GoalCardProps) {
+export function GoalCard({
+  goal,
+  today,
+  onEdit,
+  onRepeat,
+  onShowProgress,
+  onCheckin,
+  showStatus = false,
+}: GoalCardProps) {
   const daysLeft = daysBetween(today, goal.targetDate)
   const { done, total } = planSummary(goal)
   const closed = goal.status === 'sucedido' || goal.status === 'nao_sucedido'
@@ -76,11 +87,20 @@ export function GoalCard({ goal, today, onEdit, onRepeat, onShowProgress, showSt
         />
       </div>
 
+      {goal.weeks && goal.status === 'em_curso' && <WeekTracker goal={goal} today={today} onCheckin={onCheckin} />}
+
       <footer className="goal-card__footer">
-        <span className="goal-card__meta">
-          <ListChecks size={15} aria-hidden />
-          {done}/{total} passos
-        </span>
+        {goal.weeks ? (
+          <span className="goal-card__meta" title="Semanas cumpridas (de segunda a domingo)">
+            <Repeat size={15} aria-hidden />
+            {goal.weeks.met}/{goal.weeks.total} semanas
+          </span>
+        ) : (
+          <span className="goal-card__meta">
+            <ListChecks size={15} aria-hidden />
+            {done}/{total} passos
+          </span>
+        )}
         {closed ? (
           <span className="goal-card__meta">
             <CalendarCheck size={15} aria-hidden />

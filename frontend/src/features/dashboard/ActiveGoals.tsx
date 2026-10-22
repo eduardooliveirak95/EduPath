@@ -11,10 +11,19 @@ interface ActiveGoalsProps {
   onNewGoal: () => void
   onEditGoal: (goalId: number) => void
   onShowProgress: (goalId: number) => void
+  onCheckin: (goalId: number, day: string, done: boolean) => void
   onShowAll: () => void
 }
 
-export function ActiveGoals({ goals, today, onNewGoal, onEditGoal, onShowProgress, onShowAll }: ActiveGoalsProps) {
+export function ActiveGoals({
+  goals,
+  today,
+  onNewGoal,
+  onEditGoal,
+  onShowProgress,
+  onCheckin,
+  onShowAll,
+}: ActiveGoalsProps) {
   const [filter, setFilter] = useState<Category | 'todos'>('todos')
 
   const categories = [...new Set(goals.map((goal) => goal.category))]
@@ -72,6 +81,7 @@ export function ActiveGoals({ goals, today, onNewGoal, onEditGoal, onShowProgres
                 today={today}
                 onEdit={onEditGoal}
                 onShowProgress={onShowProgress}
+                onCheckin={onCheckin}
               />
             ))}
           </div>

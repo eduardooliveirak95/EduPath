@@ -13,6 +13,9 @@ const goal: Goal = {
   targetDate: '2026-06-30',
   progress: 50,
   progressFromSteps: true,
+  timesPerWeek: null,
+  checkins: [],
+  weeks: null,
   status: 'sucedido',
   plan: [
     { id: 1, title: 'Comprar sapatilhas', done: true, position: 0 },
@@ -34,7 +37,7 @@ describe('goalsToCsv', () => {
     expect(csv.endsWith('\r\n')).toBe(true)
     expect(header).toBe(
       'Objetivo;Descrição;Categoria;Estado;Início;Data limite;Progresso (%);Progresso pelos passos;' +
-        'Passos feitos;Plano;Avaliado em;Nota do resultado',
+        'Vezes por semana;Semanas cumpridas;Passos feitos;Plano;Avaliado em;Nota do resultado',
     )
   })
 
@@ -49,12 +52,19 @@ describe('goalsToCsv', () => {
         '2026-06-30',
         '50',
         'Sim',
+        '',
+        '',
         '1 de 2',
         '"[x] Comprar sapatilhas\n[ ] Correr 5 km"',
         '2026-06-28',
         '',
       ].join(';'),
     )
+  })
+
+  it('num objetivo recorrente, as vezes por semana e as semanas cumpridas', () => {
+    const habit = { ...goal, title: 'Ginásio', timesPerWeek: 3, weeks: { met: 5, total: 12 } }
+    expect(goalsToCsv([habit]).split('\r\n')[1].split(';').slice(8, 10)).toEqual(['3', '5 de 12'])
   })
 
   it('sem objetivos, só o cabeçalho', () => {

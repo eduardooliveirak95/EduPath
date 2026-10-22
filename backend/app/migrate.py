@@ -8,6 +8,8 @@ from alembic.config import Config
 from sqlalchemy import inspect, text
 from sqlalchemy.engine import Engine
 
+from app.database import foreign_keys_off
+
 MIGRATIONS_DIR = Path(__file__).parent / "migrations"
 # Revisão que corresponde às tabelas criadas antes do Alembic, com create_all.
 BASELINE = "0001"
@@ -29,7 +31,7 @@ def should_migrate(environ: Mapping[str, str]) -> bool:
 def upgrade_database(engine: Engine) -> None:
     """Põe a base de dados na última revisão. Não faz nada se já estiver."""
     config = alembic_config()
-    with engine.begin() as connection:
+    with engine.connect() as connection, foreign_keys_off(connection), connection.begin():
         if connection.dialect.name == "postgresql":
             # Duas instâncias a arrancar ao mesmo tempo: a segunda espera pela primeira.
             connection.execute(text("SELECT pg_advisory_xact_lock(:id)"), {"id": LOCK_ID})

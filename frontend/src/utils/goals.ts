@@ -30,6 +30,7 @@ export function repeatGoal(goal: Goal, today: string): NewGoal {
     targetDate: addDays(today, daysBetween(goal.startDate, goal.targetDate)),
     progress: 0,
     progressFromSteps: goal.progressFromSteps,
+    timesPerWeek: goal.timesPerWeek,
     plan: goal.plan.map(({ title }) => ({ title })),
   }
 }

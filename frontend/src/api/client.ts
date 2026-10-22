@@ -173,6 +173,11 @@ export const api = {
 
   deleteGoal: (goalId: number) => request<void>(`/api/goals/${goalId}`, 'DELETE'),
 
+  /** Regista um dia num objetivo recorrente. Devolve o objetivo, com a percentagem nova. */
+  addCheckin: (goalId: number, day: string) => request<Goal>(`/api/goals/${goalId}/checkins/${day}`, 'PUT'),
+
+  removeCheckin: (goalId: number, day: string) => request<Goal>(`/api/goals/${goalId}/checkins/${day}`, 'DELETE'),
+
   /** A evolução do progresso: a percentagem de cada dia em que mudou, do mais antigo ao mais recente. */
   goalProgress: (goalId: number) => request<ProgressPoint[]>(`/api/goals/${goalId}/progress`),
 

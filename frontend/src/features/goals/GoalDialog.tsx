@@ -11,6 +11,9 @@ import './goal-form.css'
 const DEFAULT_DURATION_DAYS = 30
 /** Intervalo da barra do progresso escolhido à mão. */
 const PROGRESS_STEP = 5
+/** Objetivos recorrentes: de 1 a 7 vezes por semana; 3 ao ligar a opção. */
+const TIMES_PER_WEEK = [1, 2, 3, 4, 5, 6, 7]
+const DEFAULT_TIMES_PER_WEEK = 3
 
 /** Passo no formulário. `id` só existe nos passos que já estão guardados. */
 interface StepDraft {
@@ -66,6 +69,7 @@ export function GoalDialog({ today, goal, draft, onClose, onCreate, onUpdate, on
   const [progressFromSteps, setProgressFromSteps] = useState(
     goal?.progressFromSteps ?? initial?.progressFromSteps ?? true,
   )
+  const [timesPerWeek, setTimesPerWeek] = useState(goal?.timesPerWeek ?? initial?.timesPerWeek ?? null)
   const [steps, setSteps] = useState(() => initialSteps(goal, initial))
   const [saving, setSaving] = useState(false)
   const [confirmingDelete, setConfirmingDelete] = useState(false)
@@ -129,7 +133,9 @@ export function GoalDialog({ today, goal, draft, onClose, onCreate, onUpdate, on
     event.preventDefault()
     setSaving(true)
     setError(null)
-    const fields = { title: title.trim(), category, startDate, targetDate, progressFromSteps }
+    const fields = { title: title.trim(), category, startDate, targetDate, progressFromSteps, timesPerWeek }
+    // A percentagem escolhida à mão só conta sem a dos passos e sem ser recorrente.
+    const manualProgress = !progressFromSteps && timesPerWeek === null
     const plan = filledSteps.map((step) => ({ ...step, title: step.title.trim() }))
     try {
       if (isEditing) {
@@ -139,8 +145,8 @@ export function GoalDialog({ today, goal, draft, onClose, onCreate, onUpdate, on
         const noteChanged = goal.outcome !== null && note !== (goal.outcomeNote ?? '')
         await onUpdate(goal.id, {
           ...fields,
-          // Com o progresso pelos passos, a percentagem escolhida à mão fica como estava.
-          ...(!progressFromSteps && { progress }),
+          // Nos outros casos, a percentagem escolhida à mão fica como estava.
+          ...(manualProgress && { progress }),
           description: description.trim() || null,
           plan: plan.map(({ id, title, done }) => ({ id, title, done })),
           ...(noteChanged && { outcomeNote: note || null }),
@@ -148,7 +154,7 @@ export function GoalDialog({ today, goal, draft, onClose, onCreate, onUpdate, on
       } else {
         await onCreate({
           ...fields,
-          progress: progressFromSteps ? 0 : progress,
+          progress: manualProgress ? progress : 0,
           description: description.trim() || undefined,
           plan: plan.map(({ title }) => ({ title })),
         })
@@ -292,7 +298,43 @@ export function GoalDialog({ today, goal, draft, onClose, onCreate, onUpdate, on
           </div>
 
           <div className="field">
-            {progressFromSteps ? (
+            <label className="check-field">
+              <input
+                type="checkbox"
+                checked={timesPerWeek !== null}
+                onChange={(e) => setTimesPerWeek(e.target.checked ? DEFAULT_TIMES_PER_WEEK : null)}
+              />
+              Repetir todas as semanas
+            </label>
+            {timesPerWeek !== null && (
+              <select
+                className="input"
+                aria-label="Vezes por semana"
+                value={timesPerWeek}
+                onChange={(e) => setTimesPerWeek(Number(e.target.value))}
+              >
+                {TIMES_PER_WEEK.map((times) => (
+                  <option key={times} value={times}>
+                    {times === 7 ? 'Todos os dias' : times === 1 ? '1 vez por semana' : `${times} vezes por semana`}
+                  </option>
+                ))}
+              </select>
+            )}
+          </div>
+
+          <div className="field">
+            {timesPerWeek !== null ? (
+              <>
+                <span className="field__label">
+                  Progresso
+                  {goal?.weeks && <strong className="field__value">{goal.progress}%</strong>}
+                </span>
+                <span className="field__hint">
+                  É a percentagem de semanas cumpridas (de segunda a domingo), até à data limite. Os dias marcam-se
+                  no cartão do objetivo.
+                </span>
+              </>
+            ) : progressFromSteps ? (
               <>
                 <span className="field__label">
                   Progresso <strong className="field__value">{shownProgress}%</strong>
@@ -315,14 +357,16 @@ export function GoalDialog({ today, goal, draft, onClose, onCreate, onUpdate, on
                 />
               </label>
             )}
-            <label className="check-field">
-              <input
-                type="checkbox"
-                checked={progressFromSteps}
-                onChange={(e) => changeProgressFromSteps(e.target.checked)}
-              />
-              Calcular pelos passos feitos
-            </label>
+            {timesPerWeek === null && (
+              <label className="check-field">
+                <input
+                  type="checkbox"
+                  checked={progressFromSteps}
+                  onChange={(e) => changeProgressFromSteps(e.target.checked)}
+                />
+                Calcular pelos passos feitos
+              </label>
+            )}
           </div>
 
           <fieldset className="field">

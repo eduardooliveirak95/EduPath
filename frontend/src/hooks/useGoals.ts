@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { api, errorMessage } from '../api/client'
 import type { Goal, GoalChanges, GoalOutcome, NewGoal, PlanStep } from '../types'
 import { withPlan } from '../utils/goals'
+import { toggleDay } from '../utils/habits'
 import { onResume } from '../utils/resume'
 
 type LoadState = { kind: 'loading' } | { kind: 'error'; message: string } | { kind: 'ready' }
@@ -127,6 +128,23 @@ export function useGoals() {
         }
       }),
 
+    // Num objetivo recorrente, marca ou desmarca um dia. Mostra-o logo e põe depois o objetivo
+    // que a API devolve, com a percentagem (das semanas cumpridas) já calculada por ela.
+    setCheckin: (goalId: number, day: string, done: boolean) =>
+      run(async () => {
+        const mark = (value: boolean) =>
+          changeGoals((current) =>
+            current.map((goal) => (goal.id === goalId ? { ...goal, checkins: toggleDay(goal.checkins, day, value) } : goal)),
+          )
+        mark(done)
+        try {
+          replaceGoal(await (done ? api.addCheckin(goalId, day) : api.removeCheckin(goalId, day)))
+        } catch (error) {
+          mark(!done)
+          throw error
+        }
+      }),
+
     // Lança ApiError se falhar, para o formulário do passo mostrar o erro e manter o texto.
     addStep: async (goalId: number, title: string) => {
       const step = await api.addStep(goalId, title)
@@ -137,5 +155,5 @@ export function useGoals() {
 
 export type GoalActions = Pick<
   ReturnType<typeof useGoals>,
-  'evaluateGoal' | 'reopenGoal' | 'setStepDone' | 'addStep'
+  'evaluateGoal' | 'reopenGoal' | 'setStepDone' | 'addStep' | 'setCheckin'
 >

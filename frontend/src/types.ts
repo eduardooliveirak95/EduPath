@@ -27,6 +27,12 @@ export interface Goal {
   progress: number
   /** O progresso é calculado pelos passos feitos, e não escolhido à mão. */
   progressFromSteps: boolean
+  /** Objetivo recorrente: quantas vezes por semana (de segunda a domingo). O progresso é o das semanas cumpridas. */
+  timesPerWeek: number | null
+  /** Dias registados num objetivo recorrente (AAAA-MM-DD), por ordem. */
+  checkins: string[]
+  /** Semanas de um objetivo recorrente e quantas foram cumpridas. */
+  weeks: { met: number; total: number } | null
   status: GoalStatus
   plan: PlanStep[]
   outcome: GoalOutcome | null
@@ -50,6 +56,7 @@ export interface NewGoal {
   targetDate: string
   progress: number
   progressFromSteps: boolean
+  timesPerWeek: number | null
   plan: { title: string }[]
 }
 
@@ -62,6 +69,8 @@ export interface GoalChanges {
   targetDate?: string
   progress?: number
   progressFromSteps?: boolean
+  /** `null` deixa de ser recorrente. */
+  timesPerWeek?: number | null
   /** Substitui o plano todo: passos com `id` mantêm-se, sem `id` são novos, os que faltam são apagados. */
   plan?: { id?: number; title: string; done: boolean }[]
   /** Nota da avaliação: só em objetivos já avaliados; `null` apaga-a. */

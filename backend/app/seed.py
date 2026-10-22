@@ -14,7 +14,7 @@ from sqlalchemy import func, select, text
 from app.config import get_today
 from app.database import Base, SessionLocal, engine
 from app.migrate import upgrade_database
-from app.models import Category, Goal, Outcome, PlanStep, ProgressEntry, User
+from app.models import Category, Goal, GoalCheckin, Outcome, PlanStep, ProgressEntry, User
 from app.security import hash_password
 
 C = Category
@@ -37,6 +37,9 @@ class Sample(NamedTuple):
     outcome: Outcome | None = None
     note: str | None = None
     closed: int | None = None
+    # Objetivo recorrente: vezes por semana e os dias registados (relativos a hoje).
+    times_per_week: int | None = None
+    checkins: tuple[int, ...] = ()
 
 
 # Há sempre objetivos em curso, por avaliar e já avaliados, seja qual for o dia de hoje.
@@ -88,6 +91,10 @@ SAMPLE_GOALS = [
     Sample("Poupar para portátil novo", None, C.FINANCAS, -200, -100, 100,
            [("Pôr de parte 150 €/mês", True)],
            Outcome.SUCEDIDO, None, -99),
+    Sample("Ir ao ginásio 3 vezes por semana", "Treino de força, pelo menos 45 minutos.",
+           C.SAUDE, -35, 56, 0, [],
+           times_per_week=3,
+           checkins=(-35, -33, -31, -28, -26, -24, -21, -19, -14, -12, -10, -7, -5, -3, -1)),
 ]
 # fmt: on
 
@@ -112,6 +119,8 @@ def build_sample_goals(today: date, user_id: int) -> list[Goal]:
             outcome=sample.outcome,
             outcome_note=sample.note,
             closed_at=None if sample.closed is None else day(sample.closed),
+            times_per_week=sample.times_per_week,
+            checkins=[GoalCheckin(day=day(offset)) for offset in sample.checkins],
         )
         for sample in SAMPLE_GOALS
     ]

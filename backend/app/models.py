@@ -1,5 +1,8 @@
-from datetime import date, datetime
+from collections import Counter
+from collections.abc import Iterable
+from datetime import date, datetime, timedelta
 from enum import StrEnum
+from typing import NamedTuple
 
 from sqlalchemy import (
     CheckConstraint,
@@ -120,6 +123,7 @@ class Goal(Base):
     __table_args__ = (
         CheckConstraint("progress BETWEEN 0 AND 100", name="ck_goals_progress_range"),
         CheckConstraint("target_date >= start_date", name="ck_goals_dates_order"),
+        CheckConstraint("times_per_week BETWEEN 1 AND 7", name="ck_goals_times_per_week_range"),
     )
 
     id: Mapped[int] = mapped_column(primary_key=True)
@@ -137,6 +141,9 @@ class Goal(Base):
     # feitos (`current_progress`), e esta fica guardada para quando deixar de ser.
     progress: Mapped[int] = mapped_column(default=0)
     progress_from_steps: Mapped[bool] = mapped_column(default=False, server_default=false())
+    # Objetivo recorrente: quantas vezes por semana (de segunda a domingo). Com isto, a
+    # percentagem é a das semanas cumpridas (`weeks`), e não a escolhida nem a dos passos.
+    times_per_week: Mapped[int | None]
     outcome: Mapped[Outcome | None] = mapped_column(_string_enum(Outcome))
     outcome_note: Mapped[str | None] = mapped_column(Text)
     closed_at: Mapped[date | None]
@@ -151,15 +158,68 @@ class Goal(Base):
         order_by="PlanStep.position",
         lazy="selectin",
     )
+    checkins: Mapped[list["GoalCheckin"]] = relationship(
+        cascade="all, delete-orphan", order_by="GoalCheckin.day", lazy="selectin"
+    )
 
     def status(self, today: date) -> GoalStatus:
         if self.outcome is not None:
             return GoalStatus(self.outcome.value)
         return GoalStatus.POR_AVALIAR if self.target_date < today else GoalStatus.EM_CURSO
 
+    def weeks(self) -> "WeeksSummary | None":
+        """Num objetivo recorrente, as semanas que tem e quantas foram cumpridas."""
+        if self.times_per_week is None:
+            return None
+        days = (checkin.day for checkin in self.checkins)
+        return weeks_summary(self.start_date, self.target_date, self.times_per_week, days)
+
     def current_progress(self) -> int:
-        """Percentagem do objetivo: a dos passos feitos, se é calculada por eles, ou a escolhida."""
+        """Percentagem do objetivo: a das semanas cumpridas num objetivo recorrente, a dos
+        passos feitos se é calculada por eles, ou a escolhida."""
+        weeks = self.weeks()
+        if weeks is not None:
+            return (weeks.met * 100 + weeks.total // 2) // weeks.total
         return steps_progress(self.plan) if self.progress_from_steps else self.progress
+
+
+class WeeksSummary(NamedTuple):
+    met: int
+    total: int
+
+
+def weeks_summary(
+    start: date, target: date, times_per_week: int, days: Iterable[date]
+) -> WeeksSummary:
+    """As semanas (de segunda a domingo) entre o início e a data limite, e quantas foram cumpridas.
+
+    Uma semana fica cumprida com `times_per_week` dias registados, ou com todos os dias dela
+    que caem no objetivo, se forem menos (a primeira e a última podem estar incompletas). As
+    semanas que ainda não chegaram contam no total: a percentagem só chega a 100% no fim.
+    """
+    first_monday = start - timedelta(days=start.weekday())
+    total = (target - first_monday).days // 7 + 1
+    per_week = Counter((day - first_monday).days // 7 for day in days if start <= day <= target)
+    met = 0
+    for week in range(total):
+        monday = first_monday + timedelta(weeks=week)
+        days_in_goal = (min(monday + timedelta(days=6), target) - max(monday, start)).days + 1
+        if per_week[week] >= min(times_per_week, days_in_goal):
+            met += 1
+    return WeeksSummary(met, total)
+
+
+class GoalCheckin(Base):
+    """Um dia em que se fez o que um objetivo recorrente pede (ex.: correr). Um por dia."""
+
+    __tablename__ = "goal_checkins"
+    __table_args__ = (UniqueConstraint("goal_id", "day", name="uq_goal_checkins_goal_id_day"),)
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    goal_id: Mapped[int] = mapped_column(
+        ForeignKey("goals.id", ondelete="CASCADE", name="fk_goal_checkins_goal_id_goals")
+    )
+    day: Mapped[date]
 
 
 def steps_progress(plan: list["PlanStep"]) -> int:

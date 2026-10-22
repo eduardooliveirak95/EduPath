@@ -185,3 +185,82 @@
   color: var(--text-subtle);
   font-size: 0.8rem;
 }
+
+/* Objetivo recorrente: os dias desta semana (WeekTracker) */
+.week-tracker {
+  display: grid;
+  gap: 8px;
+}
+
+.week-tracker__header {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 4px 12px;
+  color: var(--text-muted);
+  font-size: 0.8rem;
+}
+
+.week-tracker__rule,
+.week-tracker__count {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.week-tracker__count {
+  font-weight: 600;
+}
+
+.week-tracker__count.is-met {
+  color: var(--success);
+}
+
+.week-tracker__days {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 4px;
+}
+
+.week-day {
+  display: grid;
+  justify-items: center;
+  gap: 1px;
+  min-width: 0;
+  padding: 5px 0;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  color: var(--text-muted);
+  cursor: pointer;
+}
+
+.week-day:hover:not(:disabled) {
+  border-color: var(--primary);
+}
+
+.week-day--today {
+  border-color: var(--primary);
+}
+
+.week-day[aria-pressed='true'] {
+  border-color: var(--primary);
+  background: var(--primary);
+  color: var(--on-primary);
+}
+
+.week-day:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+.week-day__name {
+  font-size: 0.68rem;
+  font-weight: 600;
+}
+
+.week-day__number {
+  font-size: 0.85rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}

@@ -130,6 +130,7 @@ function Workspace({ user, account, onSignOut }: WorkspaceProps) {
             onEditGoal={openEditGoal}
             onRepeatGoal={openRepeatGoal}
             onShowProgress={setProgressGoalId}
+            onCheckin={actions.setCheckin}
           />
         )
       case 'planos':

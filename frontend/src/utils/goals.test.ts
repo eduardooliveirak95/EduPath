@@ -17,6 +17,9 @@ function goal(fields: Partial<Goal> = {}): Goal {
     targetDate: '2026-07-01',
     progress: 0,
     progressFromSteps: false,
+    timesPerWeek: null,
+    checkins: [],
+    weeks: null,
     status,
     plan: [],
     outcome: closed ? status : null,
@@ -108,8 +111,13 @@ describe('repeatGoal', () => {
       targetDate: '2027-01-17', // 89 dias depois, como de 1 de janeiro a 31 de março
       progress: 0,
       progressFromSteps: true,
+      timesPerWeek: null,
       plan: [{ title: 'Fazer a lista' }, { title: 'Ler todos os dias' }],
     })
+  })
+
+  it('um objetivo recorrente continua recorrente', () => {
+    expect(repeatGoal(goal({ timesPerWeek: 3 }), '2026-10-20').timesPerWeek).toBe(3)
   })
 
   it('sem descrição, fica sem descrição', () => {

@@ -2,9 +2,10 @@ from datetime import date
 
 from fastapi import APIRouter, HTTPException, status
 from sqlalchemy import ColumnElement, and_, select
+from sqlalchemy.orm import Session
 
 from app.deps import CurrentUserDep, SessionDep, TodayDep, get_goal_or_404
-from app.models import Category, Goal, GoalStatus, PlanStep, ProgressEntry
+from app.models import Category, Goal, GoalCheckin, GoalStatus, PlanStep, ProgressEntry, User
 from app.progress import record_progress
 from app.schemas import (
     DATES_ORDER_ERROR,
@@ -81,6 +82,7 @@ def create_goal(payload: GoalCreate, session: SessionDep, user: CurrentUserDep, 
         target_date=payload.target_date,
         progress=payload.progress,
         progress_from_steps=payload.progress_from_steps,
+        times_per_week=payload.times_per_week,
         plan=[
             PlanStep(title=step.title, done=step.done, position=index)
             for index, step in enumerate(payload.plan)
@@ -134,6 +136,48 @@ def progress_history(goal_id: int, session: SessionDep, user: CurrentUserDep):
     return session.scalars(
         select(ProgressEntry).where(ProgressEntry.goal_id == goal_id).order_by(ProgressEntry.day)
     ).all()
+
+
+def get_checkin_goal(session: Session, goal_id: int, user: User, day: date, today: date) -> Goal:
+    """O objetivo recorrente onde se regista (ou tira) um dia, bloqueado até ao fim do pedido."""
+    goal = get_goal_or_404(session, goal_id, user, lock=True)
+    if goal.times_per_week is None:
+        raise HTTPException(status.HTTP_409_CONFLICT, "Este objetivo não é recorrente.")
+    if goal.outcome is not None:
+        raise HTTPException(status.HTTP_409_CONFLICT, "Este objetivo já foi avaliado.")
+    if not goal.start_date <= day <= min(goal.target_date, today):
+        raise HTTPException(
+            status.HTTP_422_UNPROCESSABLE_CONTENT,
+            "Só dá para registar dias entre o início do objetivo e hoje (até à data limite).",
+        )
+    return goal
+
+
+@router.put("/{goal_id}/checkins/{day}", response_model=GoalRead)
+def add_checkin(
+    goal_id: int, day: date, session: SessionDep, user: CurrentUserDep, today: TodayDep
+):
+    """Regista que nesse dia se fez o que o objetivo recorrente pede. Se já estava, fica igual."""
+    goal = get_checkin_goal(session, goal_id, user, day, today)
+    if all(checkin.day != day for checkin in goal.checkins):
+        goal.checkins.append(GoalCheckin(day=day))
+        record_progress(session, goal, today)
+    session.commit()
+    session.refresh(goal)
+    return GoalRead.from_goal(goal, today)
+
+
+@router.delete("/{goal_id}/checkins/{day}", response_model=GoalRead)
+def remove_checkin(
+    goal_id: int, day: date, session: SessionDep, user: CurrentUserDep, today: TodayDep
+):
+    """Tira o registo desse dia (ex.: marcado por engano). Se não estava, fica igual."""
+    goal = get_checkin_goal(session, goal_id, user, day, today)
+    goal.checkins = [checkin for checkin in goal.checkins if checkin.day != day]
+    record_progress(session, goal, today)
+    session.commit()
+    session.refresh(goal)
+    return GoalRead.from_goal(goal, today)
 
 
 @router.delete("/{goal_id}", status_code=status.HTTP_204_NO_CONTENT)

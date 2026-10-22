@@ -81,6 +81,15 @@ class PlanStepRead(ApiModel):
 # Objetivos
 
 
+TimesPerWeek = Annotated[int, Field(ge=1, le=7)]
+RECURRING = "Objetivo recorrente: quantas vezes por semana (de segunda a domingo)."
+
+
+class Weeks(ApiModel):
+    met: int
+    total: int
+
+
 class GoalCreate(ApiModel):
     title: Title
     description: LongText | None = None
@@ -91,6 +100,7 @@ class GoalCreate(ApiModel):
     progress_from_steps: bool = Field(
         default=False, description="Se for true, o progresso é a percentagem de passos feitos."
     )
+    times_per_week: TimesPerWeek | None = Field(default=None, description=RECURRING)
     plan: list[PlanStepCreate] = Field(default_factory=list)
 
     @model_validator(mode="after")
@@ -108,6 +118,9 @@ class GoalUpdate(ApiModel):
     target_date: date | None = None
     progress: Progress | None = None
     progress_from_steps: bool | None = None
+    times_per_week: TimesPerWeek | None = Field(
+        default=None, description=f"{RECURRING} Com null, deixa de ser recorrente."
+    )
     plan: list[PlanStepEdit] | None = Field(
         default=None,
         description=(
@@ -145,9 +158,15 @@ class GoalRead(ApiModel):
     start_date: date
     target_date: date
     progress: int = Field(
-        description="Com progressFromSteps, a percentagem de passos feitos (sem passos, 0)."
+        description=(
+            "Num objetivo recorrente, a percentagem de semanas cumpridas; com progressFromSteps,"
+            " a de passos feitos (sem passos, 0)."
+        )
     )
     progress_from_steps: bool
+    times_per_week: int | None = Field(description=RECURRING)
+    checkins: list[date] = Field(description="Dias registados (só nos objetivos recorrentes).")
+    weeks: Weeks | None = Field(description="Semanas do objetivo recorrente e quantas cumpridas.")
     status: GoalStatus
     plan: list[PlanStepRead]
     outcome: Outcome | None
@@ -158,7 +177,13 @@ class GoalRead(ApiModel):
 
     @classmethod
     def from_goal(cls, goal: Goal, today: date) -> Self:
-        derived = {"status": goal.status(today), "progress": goal.current_progress()}
+        weeks = goal.weeks()
+        derived = {
+            "status": goal.status(today),
+            "progress": goal.current_progress(),
+            "checkins": [checkin.day for checkin in goal.checkins],
+            "weeks": weeks and Weeks(met=weeks.met, total=weeks.total),
+        }
         data = {name: getattr(goal, name) for name in cls.model_fields if name not in derived}
         return cls.model_validate({**data, **derived})
 

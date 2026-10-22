@@ -1,7 +1,8 @@
 from collections.abc import Iterator
+from contextlib import contextmanager
 
 from sqlalchemy import create_engine, event
-from sqlalchemy.engine import Engine
+from sqlalchemy.engine import Connection, Engine
 from sqlalchemy.orm import DeclarativeBase, Session, sessionmaker
 
 from app.config import get_settings
@@ -34,6 +35,27 @@ def create_db_engine(url: str, **kwargs) -> Engine:
         dbapi_connection.execute("PRAGMA foreign_keys=ON")
 
     return engine
+
+
+@contextmanager
+def foreign_keys_off(connection: Connection) -> Iterator[None]:
+    """No SQLite, desliga as chaves estrangeiras enquanto as migrações correm.
+
+    Para mudar uma tabela, o SQLite recria-a (o "batch" do Alembic), e o DROP da antiga
+    apagaria em cascata as linhas que dependem dela: mudar a tabela goals apagava os passos e a
+    evolução do progresso. Tem de ser fora de uma transação (dentro, o PRAGMA não faz nada).
+    No Postgres não é preciso: as tabelas mudam-se sem ser recriadas.
+    """
+    if connection.dialect.name != "sqlite":
+        yield
+        return
+    connection.exec_driver_sql("PRAGMA foreign_keys=OFF")
+    connection.commit()
+    try:
+        yield
+    finally:
+        connection.exec_driver_sql("PRAGMA foreign_keys=ON")
+        connection.commit()
 
 
 engine = create_db_engine(get_settings().database_url)

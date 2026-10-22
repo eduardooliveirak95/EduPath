@@ -99,6 +99,7 @@ export function Dashboard({
             onNewGoal={onNewGoal}
             onEditGoal={onEditGoal}
             onShowProgress={onShowProgress}
+            onCheckin={actions.setCheckin}
             onShowAll={() => onNavigate('objetivos')}
           />
           <NextSteps goals={active} onCompleteStep={(goalId, stepId) => actions.setStepDone(goalId, stepId, true)} />

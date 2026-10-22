@@ -150,6 +150,41 @@ def test_existing_goals_get_their_first_progress_entry(engine):
     ]
 
 
+def test_changing_the_goals_table_keeps_what_depends_on_it(engine):
+    # No SQLite, a 0008 recria a tabela goals; com as chaves estrangeiras ligadas, isso apagava
+    # em cascata os passos e a evolução do progresso.
+    config = alembic_config()
+    with engine.begin() as connection:
+        config.attributes["connection"] = connection
+        command.upgrade(config, "0007")
+        connection.execute(
+            text(
+                "INSERT INTO goals (id, title, category, start_date, target_date, progress)"
+                " VALUES (1, 'Antigo', 'saude', '2026-01-01', '2026-12-01', 30)"
+            )
+        )
+        connection.execute(
+            text("INSERT INTO plan_steps (goal_id, title, done, position) VALUES (1, 'A', true, 0)")
+        )
+        connection.execute(
+            text(
+                "INSERT INTO progress_entries (goal_id, day, progress) VALUES (1, '2026-02-01', 30)"
+            )
+        )
+
+    upgrade_database(engine)
+
+    with engine.connect() as connection:
+        assert connection.execute(text("SELECT COUNT(*) FROM plan_steps")).scalar() == 1
+        assert connection.execute(text("SELECT COUNT(*) FROM progress_entries")).scalar() == 1
+        assert connection.execute(text("SELECT times_per_week FROM goals")).scalar() is None
+        if engine.dialect.name == "sqlite":
+            # As chaves estrangeiras voltam a ficar ligadas depois das migrações.
+            assert connection.exec_driver_sql("PRAGMA foreign_keys").scalar() == 1
+    with pytest.raises(IntegrityError), engine.begin() as connection:
+        connection.execute(text("UPDATE goals SET times_per_week = 8"))
+
+
 @pytest.mark.parametrize(
     ("environ", "expected"),
     [({}, True), ({"VERCEL_ENV": "production"}, True), ({"VERCEL_ENV": "preview"}, False)],

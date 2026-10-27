@@ -104,7 +104,7 @@ export function GoalCard({
         {closed ? (
           <span className="goal-card__meta">
             <CalendarCheck size={15} aria-hidden />
-            Avaliado a {formatShortDate(closedOn(goal))}
+            Terminou a {formatShortDate(closedOn(goal))}
           </span>
         ) : (
           <span

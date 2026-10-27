@@ -3,7 +3,8 @@ import { flushSync } from 'react-dom'
 import { ChevronDown, ChevronUp, Plus, Trash2, X } from 'lucide-react'
 import { ApiError } from '../../api/client'
 import { CATEGORIES } from '../../data/categories'
-import type { Category, Goal, GoalChanges, NewGoal } from '../../types'
+import { STATUSES } from '../../data/statuses'
+import type { Category, Goal, GoalChanges, GoalOutcome, NewGoal } from '../../types'
 import { addDays } from '../../utils/date'
 import { stepsProgress } from '../../utils/goals'
 import './goal-form.css'
@@ -14,6 +15,8 @@ const PROGRESS_STEP = 5
 /** Objetivos recorrentes: de 1 a 7 vezes por semana; 3 ao ligar a opção. */
 const TIMES_PER_WEEK = [1, 2, 3, 4, 5, 6, 7]
 const DEFAULT_TIMES_PER_WEEK = 3
+/** Resultados que se podem escolher ao editar; `null` é ainda sem resultado (em curso ou por avaliar). */
+const OUTCOMES: (GoalOutcome | null)[] = [null, 'sucedido', 'nao_sucedido']
 
 /** Passo no formulário. `id` só existe nos passos que já estão guardados. */
 interface StepDraft {
@@ -58,6 +61,10 @@ export function GoalDialog({ today, goal, draft, onClose, onCreate, onUpdate, on
 
   const [title, setTitle] = useState(goal?.title ?? initial?.title ?? '')
   const [description, setDescription] = useState(goal?.description ?? initial?.description ?? '')
+  // O resultado e o dia em que terminou, como estavam ao abrir: só vão no pedido se mudarem aqui.
+  const [saved] = useState(() => ({ outcome: goal?.outcome ?? null, closedAt: goal?.closedAt ?? null }))
+  const [outcome, setOutcome] = useState(saved.outcome)
+  const [closedAt, setClosedAt] = useState(saved.closedAt ?? today)
   const [outcomeNote, setOutcomeNote] = useState(goal?.outcomeNote ?? '')
   const [category, setCategory] = useState<Category>(goal?.category ?? initial?.category ?? 'pessoal')
   const [startDate, setStartDate] = useState(goal?.startDate ?? initial?.startDate ?? today)
@@ -142,13 +149,15 @@ export function GoalDialog({ today, goal, draft, onClose, onCreate, onUpdate, on
         // A nota só vai se mudou: se o objetivo foi avaliado noutro lado com o formulário
         // aberto, a caixa ainda vazia não apaga a nota que entretanto foi escrita.
         const note = outcomeNote.trim()
-        const noteChanged = goal.outcome !== null && note !== (goal.outcomeNote ?? '')
+        const noteChanged = outcome !== null && note !== (goal.outcomeNote ?? '')
         await onUpdate(goal.id, {
           ...fields,
           // Nos outros casos, a percentagem escolhida à mão fica como estava.
           ...(manualProgress && { progress }),
           description: description.trim() || null,
           plan: plan.map(({ id, title, done }) => ({ id, title, done })),
+          ...(outcome !== saved.outcome && { outcome }),
+          ...(outcome !== null && closedAt !== saved.closedAt && { closedAt }),
           ...(noteChanged && { outcomeNote: note || null }),
         })
       } else {
@@ -230,25 +239,64 @@ export function GoalDialog({ today, goal, draft, onClose, onCreate, onUpdate, on
             />
           </label>
 
-          {goal?.outcome && (
-            <label className="field">
-              <span className="field__label">
-                Nota do resultado{' '}
-                <span className="field__optional">
-                  ({goal.outcome === 'sucedido' ? 'sucedido' : 'não sucedido'}; opcional)
+          {isEditing && (
+            <fieldset className="field">
+              <legend className="field__label">Resultado</legend>
+              <div className="choices">
+                {OUTCOMES.map((value) => {
+                  // Sem resultado, o estado depende da data limite (a do formulário).
+                  const { label, icon: Icon } = STATUSES[value ?? (targetDate < today ? 'por_avaliar' : 'em_curso')]
+                  return (
+                    <label key={value ?? 'aberto'} className="choice">
+                      <input
+                        type="radio"
+                        name="outcome"
+                        className="visually-hidden"
+                        checked={outcome === value}
+                        onChange={() => setOutcome(value)}
+                      />
+                      <Icon size={15} aria-hidden />
+                      {label}
+                    </label>
+                  )
+                })}
+              </div>
+              {outcome === null && (
+                <span className="field__hint">Já terminaste? Escolhe o resultado, mesmo antes da data limite.</span>
+              )}
+            </fieldset>
+          )}
+
+          {outcome !== null && (
+            <>
+              <label className="field">
+                <span className="field__label">Data em que terminou</span>
+                <input
+                  className="input"
+                  type="date"
+                  value={closedAt}
+                  min={startDate}
+                  max={today}
+                  onChange={(e) => setClosedAt(e.target.value)}
+                  required
+                />
+              </label>
+              <label className="field">
+                <span className="field__label">
+                  Nota do resultado <span className="field__optional">(opcional)</span>
                 </span>
-              </span>
-              <textarea
-                className="input"
-                value={outcomeNote}
-                onChange={(e) => setOutcomeNote(e.target.value)}
-                placeholder={
-                  goal.outcome === 'sucedido' ? 'O que te ajudou a conseguir?' : 'O que faltou? O que farias diferente?'
-                }
-                maxLength={2000}
-                rows={2}
-              />
-            </label>
+                <textarea
+                  className="input"
+                  value={outcomeNote}
+                  onChange={(e) => setOutcomeNote(e.target.value)}
+                  placeholder={
+                    outcome === 'sucedido' ? 'O que te ajudou a conseguir?' : 'O que faltou? O que farias diferente?'
+                  }
+                  maxLength={2000}
+                  rows={2}
+                />
+              </label>
+            </>
           )}
 
           <fieldset className="field">

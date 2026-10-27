@@ -5,9 +5,19 @@ from sqlalchemy import ColumnElement, and_, select
 from sqlalchemy.orm import Session
 
 from app.deps import CurrentUserDep, SessionDep, TodayDep, get_goal_or_404
-from app.models import Category, Goal, GoalCheckin, GoalStatus, PlanStep, ProgressEntry, User
+from app.models import (
+    Category,
+    Goal,
+    GoalCheckin,
+    GoalStatus,
+    Outcome,
+    PlanStep,
+    ProgressEntry,
+    User,
+)
 from app.progress import record_progress
 from app.schemas import (
+    CLOSED_AT_ERROR,
     DATES_ORDER_ERROR,
     EvaluationCreate,
     GoalCreate,
@@ -29,6 +39,16 @@ def status_filter(goal_status: GoalStatus, today: date) -> ColumnElement[bool]:
             return and_(Goal.outcome.is_(None), Goal.target_date < today)
         case _:
             return Goal.outcome == goal_status.value
+
+
+def set_outcome(goal: Goal, outcome: Outcome | None, today: date) -> None:
+    """Avalia o objetivo (a terminar hoje, se ainda não tinha data) ou, com None, reabre-o."""
+    if outcome is None:
+        goal.outcome_note = None
+        goal.closed_at = None
+    elif goal.closed_at is None:
+        goal.closed_at = today
+    goal.outcome = outcome
 
 
 def replace_plan(goal: Goal, steps: list[PlanStepEdit]) -> None:
@@ -109,18 +129,28 @@ def update_goal(
     goal = get_goal_or_404(session, goal_id, user, lock=True)
     changes = payload.changes()
     changes.pop("plan", None)
+    if "outcome" in changes:
+        set_outcome(goal, changes.pop("outcome"), today)
     if "outcome_note" in changes:
         if goal.outcome is None:
             raise HTTPException(
                 status.HTTP_409_CONFLICT, "Só os objetivos já avaliados têm nota do resultado."
             )
         changes["outcome_note"] = changes["outcome_note"] or None
+    if "closed_at" in changes and goal.outcome is None:
+        raise HTTPException(
+            status.HTTP_409_CONFLICT, "Só os objetivos já avaliados têm data em que terminaram."
+        )
     for field, value in changes.items():
         setattr(goal, field, value)
     if payload.plan is not None:
         replace_plan(goal, payload.plan)
     if goal.target_date < goal.start_date:
         raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, DATES_ORDER_ERROR)
+    if ("closed_at" in changes or "start_date" in changes) and not (
+        goal.closed_at is None or goal.start_date <= goal.closed_at <= today
+    ):
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, CLOSED_AT_ERROR)
     record_progress(session, goal, today)
 
     session.commit()
@@ -195,13 +225,14 @@ def evaluate_goal(
     today: TodayDep,
 ):
     """Regista se o objetivo foi sucedido ou não. Fica no histórico com a data de hoje."""
-    goal = get_goal_or_404(session, goal_id, user)
+    goal = get_goal_or_404(session, goal_id, user, lock=True)
     if goal.outcome is not None:
         raise HTTPException(status.HTTP_409_CONFLICT, "Este objetivo já foi avaliado.")
 
-    goal.outcome = payload.outcome
+    set_outcome(goal, payload.outcome, today)
     goal.outcome_note = payload.note
-    goal.closed_at = today
+    # Num objetivo recorrente avaliado antes da data limite, a percentagem muda (`Goal.weeks`).
+    record_progress(session, goal, today)
     session.commit()
     session.refresh(goal)
     return GoalRead.from_goal(goal, today)
@@ -210,10 +241,9 @@ def evaluate_goal(
 @router.delete("/{goal_id}/evaluation", response_model=GoalRead)
 def reopen_goal(goal_id: int, session: SessionDep, user: CurrentUserDep, today: TodayDep):
     """Anula a avaliação (ex.: se foi registada por engano)."""
-    goal = get_goal_or_404(session, goal_id, user)
-    goal.outcome = None
-    goal.outcome_note = None
-    goal.closed_at = None
+    goal = get_goal_or_404(session, goal_id, user, lock=True)
+    set_outcome(goal, None, today)
+    record_progress(session, goal, today)
     session.commit()
     session.refresh(goal)
     return GoalRead.from_goal(goal, today)

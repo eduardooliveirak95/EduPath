@@ -1,3 +1,5 @@
+from datetime import timedelta
+
 import pytest
 
 from app.seed import build_sample_goals
@@ -352,6 +354,84 @@ def test_evaluation_note_has_a_maximum_length(client, create_goal):
 
     assert client.patch(url, json={"outcomeNote": "x" * 2001}).status_code == 422
     assert client.get(url).json()["outcomeNote"] == "Ok"
+
+
+def test_update_evaluates_a_goal_before_its_target_date(client, create_goal):
+    goal = create_goal(startDate="2026-06-01", targetDate="2026-12-31")
+    url = f"/api/goals/{goal['id']}"
+
+    updated = client.patch(
+        url,
+        json={"outcome": "sucedido", "closedAt": "2026-06-10", "outcomeNote": "Antes do prazo."},
+    ).json()
+
+    assert {k: updated[k] for k in ("status", "outcome", "closedAt", "outcomeNote")} == {
+        "status": "sucedido",
+        "outcome": "sucedido",
+        "closedAt": "2026-06-10",
+        "outcomeNote": "Antes do prazo.",
+    }
+    # Sem a data, termina hoje.
+    other = create_goal(startDate="2026-06-01", targetDate="2026-12-31")
+    evaluated = client.patch(f"/api/goals/{other['id']}", json={"outcome": "nao_sucedido"}).json()
+    assert (evaluated["status"], evaluated["closedAt"]) == ("nao_sucedido", TODAY.isoformat())
+
+
+def test_update_changes_the_outcome_and_the_day_it_ended(client, create_goal):
+    goal = create_goal(startDate="2026-06-01")
+    url = f"/api/goals/{goal['id']}"
+    client.post(f"{url}/evaluation", json={"outcome": "sucedido", "note": "Ok"})
+
+    assert client.patch(url, json={"closedAt": "2026-06-05"}).json()["closedAt"] == "2026-06-05"
+    changed = client.patch(url, json={"outcome": "nao_sucedido"}).json()
+    # Mudar o resultado não mexe na data nem na nota.
+    assert (changed["status"], changed["closedAt"], changed["outcomeNote"]) == (
+        "nao_sucedido",
+        "2026-06-05",
+        "Ok",
+    )
+
+
+def test_update_with_null_outcome_reopens_the_goal(client, create_goal):
+    goal = create_goal()
+    url = f"/api/goals/{goal['id']}"
+    client.post(f"{url}/evaluation", json={"outcome": "sucedido", "note": "Ok"})
+
+    reopened = client.patch(url, json={"outcome": None}).json()
+
+    assert (reopened["status"], reopened["outcomeNote"], reopened["closedAt"]) == (
+        "em_curso",
+        None,
+        None,
+    )
+
+
+def test_the_day_it_ended_is_between_the_start_and_today(client, create_goal):
+    goal = create_goal(startDate="2026-06-01")
+    url = f"/api/goals/{goal['id']}"
+
+    response = client.patch(url, json={"closedAt": "2026-06-05"})
+    assert (response.status_code, response.json()["detail"]) == (
+        409,
+        "Só os objetivos já avaliados têm data em que terminaram.",
+    )
+    client.post(f"{url}/evaluation", json={"outcome": "sucedido"})
+    evaluated = client.get(url).json()
+
+    tomorrow = (TODAY + timedelta(days=1)).isoformat()
+    for changes in (
+        {"closedAt": "2026-05-31"},
+        {"closedAt": tomorrow},
+        {"outcome": "sucedido", "closedAt": tomorrow},
+        {"startDate": tomorrow, "targetDate": "2026-12-31"},
+    ):
+        response = client.patch(url, json=changes)
+        assert response.status_code == 422, changes
+        assert (
+            response.json()["detail"] == "A data em que terminou tem de ser entre o início e hoje."
+        )
+    assert client.patch(url, json={"closedAt": None}).status_code == 422
+    assert client.get(url).json() == evaluated
 
 
 def test_sample_goals_cover_every_status(client, user, session_factory):

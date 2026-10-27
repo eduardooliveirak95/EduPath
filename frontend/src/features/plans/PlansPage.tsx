@@ -95,7 +95,7 @@ function PlanCard({ goal, today, actions, onEdit }: PlanCardProps) {
             {goal.status !== 'em_curso' && <StatusBadge status={goal.status} />}
             {closed ? (
               <span>
-                <CalendarCheck size={14} aria-hidden /> Avaliado a {formatShortDate(closedOn(goal))}
+                <CalendarCheck size={14} aria-hidden /> Terminou a {formatShortDate(closedOn(goal))}
               </span>
             ) : (
               <span title={`Data limite: ${formatShortDate(goal.targetDate)}`}>

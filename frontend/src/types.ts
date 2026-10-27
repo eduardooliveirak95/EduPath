@@ -73,8 +73,12 @@ export interface GoalChanges {
   timesPerWeek?: number | null
   /** Substitui o plano todo: passos com `id` mantêm-se, sem `id` são novos, os que faltam são apagados. */
   plan?: { id?: number; title: string; done: boolean }[]
-  /** Nota da avaliação: só em objetivos já avaliados; `null` apaga-a. */
+  /** Avalia o objetivo (mesmo antes da data limite) ou muda o resultado; `null` anula a avaliação. */
+  outcome?: GoalOutcome | null
+  /** Nota da avaliação: só em objetivos avaliados; `null` apaga-a. */
   outcomeNote?: string | null
+  /** Dia em que terminou, entre o início e hoje: só em objetivos avaliados (ao avaliar sem ele, fica hoje). */
+  closedAt?: string
 }
 
 export interface User {

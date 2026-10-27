@@ -32,6 +32,42 @@ test('avalia um objetivo, muda a nota e anula a avaliação', async ({ page }) =
   await expect(page.locator('.review-item').filter({ hasText: 'Perder 5 kg' })).toBeVisible()
 })
 
+test('avalia um objetivo antes da data limite e muda o dia em que terminou', async ({ page }) => {
+  // "Meditar 10 minutos por dia" ainda tem 18 dias pela frente.
+  await openFromSidebar(page, 'Objetivos')
+  await page.getByRole('button', { name: 'Editar "Meditar 10 minutos por dia"' }).click()
+  const dialog = page.getByRole('dialog', { name: 'Editar objetivo' })
+  await expect(dialog.getByLabel('Em curso')).toBeChecked()
+  await expect(dialog.getByLabel('Data em que terminou')).toHaveCount(0)
+  await dialog.getByText('Sucedido', { exact: true }).click()
+  // Por omissão, terminou hoje; não pode ser depois.
+  await expect(dialog.getByLabel('Data em que terminou')).toHaveValue(today())
+  await expect(dialog.getByLabel('Data em que terminou')).toHaveAttribute('max', today())
+  await dialog.getByLabel('Data em que terminou').fill(addDays(today(), -2))
+  await dialog.getByLabel(/Nota do resultado/).fill('90 dias seguidos, antes do prazo.')
+  await dialog.getByRole('button', { name: 'Guardar' }).click()
+  await expect(dialog).toBeHidden()
+
+  await openFromSidebar(page, 'Histórico')
+  await expect(page.getByText('90 dias seguidos, antes do prazo.')).toBeVisible()
+
+  // O dia em que terminou muda-se depois, no mesmo formulário.
+  await page.getByRole('button', { name: 'Editar "Meditar 10 minutos por dia"' }).click()
+  await expect(dialog.getByLabel('Sucedido', { exact: true })).toBeChecked()
+  await expect(dialog.getByLabel('Data em que terminou')).toHaveValue(addDays(today(), -2))
+  await dialog.getByLabel('Data em que terminou').fill(addDays(today(), -5))
+  await dialog.getByRole('button', { name: 'Guardar' }).click()
+  await expect(dialog).toBeHidden()
+  await page.getByRole('button', { name: 'Editar "Meditar 10 minutos por dia"' }).click()
+  await expect(dialog.getByLabel('Data em que terminou')).toHaveValue(addDays(today(), -5))
+
+  // Voltar a "Em curso" anula a avaliação: sai do histórico.
+  await dialog.getByText('Em curso', { exact: true }).click()
+  await dialog.getByRole('button', { name: 'Guardar' }).click()
+  await expect(dialog).toBeHidden()
+  await expect(page.getByText('90 dias seguidos, antes do prazo.')).toBeHidden()
+})
+
 test('tenta outra vez um objetivo não sucedido, com datas novas', async ({ page }) => {
   await openFromSidebar(page, 'Histórico')
   await page.getByRole('button', { name: 'Tentar outra vez "Deixar de fumar"' }).click()

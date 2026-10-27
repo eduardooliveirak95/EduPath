@@ -147,7 +147,10 @@ export function HistoryPage({ goals, actions, onEditGoal, onRepeatGoal }: Histor
         <div className="empty">
           <History size={22} aria-hidden />
           <p>Ainda não avaliaste nenhum objetivo.</p>
-          <p>Quando o prazo de um objetivo terminar, regista o resultado no Painel, em "Por avaliar".</p>
+          <p>
+            Quando o prazo de um objetivo terminar, regista o resultado no Painel, em "Por avaliar". Se acabares antes,
+            escolhe o resultado ao editá-lo.
+          </p>
         </div>
       ) : (
         <>

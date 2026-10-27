@@ -57,7 +57,7 @@ export function byDeadline(a: Goal, b: Goal): number {
   return a.targetDate.localeCompare(b.targetDate) || a.id - b.id
 }
 
-/** Avaliados mais recentes primeiro. */
+/** Os que terminaram mais recentemente primeiro. */
 export function byClosedDesc(a: Goal, b: Goal): number {
   return closedOn(b).localeCompare(closedOn(a)) || b.id - a.id
 }

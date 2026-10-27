@@ -20,6 +20,7 @@ LongText = Annotated[str, StringConstraints(strip_whitespace=True, max_length=20
 Progress = Annotated[int, Field(ge=0, le=100)]
 
 DATES_ORDER_ERROR = "A data limite não pode ser anterior à data de início."
+CLOSED_AT_ERROR = "A data em que terminou tem de ser entre o início e hoje."
 
 
 class ApiModel(BaseModel):
@@ -128,9 +129,23 @@ class GoalUpdate(ApiModel):
             "os sem id são novos e os que faltarem são apagados. A ordem da lista é a do plano."
         ),
     )
+    outcome: Outcome | None = Field(
+        default=None,
+        description=(
+            "Avalia o objetivo, mesmo antes da data limite, ou muda o resultado. Com null, anula a"
+            " avaliação (e apaga a nota e a data em que terminou)."
+        ),
+    )
     outcome_note: LongText | None = Field(
         default=None,
-        description="Nota da avaliação. Só em objetivos já avaliados; vazia ou null apaga-a.",
+        description="Nota da avaliação. Só em objetivos avaliados; vazia ou null apaga-a.",
+    )
+    closed_at: date | None = Field(
+        default=None,
+        description=(
+            "Dia em que o objetivo terminou, entre o início e hoje. Só em objetivos avaliados; ao"
+            " avaliar sem ele, fica o dia de hoje."
+        ),
     )
 
     @model_validator(mode="after")
@@ -145,6 +160,7 @@ class GoalUpdate(ApiModel):
                 "progress",
                 "progress_from_steps",
                 "plan",
+                "closed_at",
             ),
         )
         return self

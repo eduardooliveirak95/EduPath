@@ -2,7 +2,7 @@
 
 App para definir objetivos pessoais e acompanhar o caminho até lá.
 
-Cada objetivo tem uma data limite, uma categoria e uma percentagem de progresso. Dá para dividir cada objetivo nos passos para lá chegar e ir marcando o que já está feito, e a percentagem acompanha os passos feitos (ou, se se preferir, escolhe-se à mão). Quando o prazo acaba, regista-se se correu bem ou não, com uma nota, e o objetivo passa para o histórico. Assim fica à vista o que já se alcançou e o que se pode fazer melhor.
+Cada objetivo tem uma data limite, uma categoria e uma percentagem de progresso. Dá para dividir cada objetivo nos passos para lá chegar e ir marcando o que já está feito, e a percentagem acompanha os passos feitos (ou, se se preferir, escolhe-se à mão). Quando o prazo acaba, ou antes, se já estiver feito, regista-se se correu bem ou não, com uma nota, e o objetivo passa para o histórico. Assim fica à vista o que já se alcançou e o que se pode fazer melhor.
 
 O que tem:
 
@@ -10,7 +10,7 @@ O que tem:
 - planos passo a passo para cada objetivo, pela ordem que se quiser
 - objetivos recorrentes, como ir ao ginásio três vezes por semana, em que se marca cada dia em que se fez e o progresso sobe com cada dia feito
 - um gráfico com a evolução do progresso de cada objetivo, ao lado do ritmo que seria preciso para chegar aos 100% na data limite
-- avaliação no fim do prazo, com uma nota sobre como correu, que se pode mudar depois
+- avaliação no fim do prazo, ou antes se já estiver feito, com a data em que terminou e uma nota sobre como correu, que se podem mudar depois
 - histórico organizado por mês, com a taxa de sucesso geral e por categoria
 - repetir um objetivo que correu bem, ou tentar outra vez um que não correu, com o mesmo plano e datas novas
 - notificações dos prazos a chegar e dos objetivos por avaliar

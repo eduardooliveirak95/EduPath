@@ -84,6 +84,29 @@ def test_checkins_change_the_progress_history(client, create_goal):
     assert [(point["day"], point["progress"]) for point in history] == [(MONDAY.isoformat(), 25)]
 
 
+def test_evaluated_early_the_goal_ends_on_the_day_it_ended(client, create_goal):
+    goal = recurring_goal(create_goal)
+    url = f"/api/goals/{goal['id']}"
+    set_today(MONDAY + timedelta(days=2))  # quarta-feira
+    for day in days(0, 1, 2):
+        client.put(f"{url}/checkins/{day}")
+
+    # Avaliado na quarta, só conta essa semana até quarta: os 3 dias pedidos foram feitos.
+    evaluated = client.post(f"{url}/evaluation", json={"outcome": "sucedido"}).json()
+    assert (evaluated["weeks"], evaluated["progress"]) == ({"met": 1, "total": 1}, 100)
+    # A terminar na terça, essa semana só pedia 2 dias.
+    changed = client.patch(url, json={"closedAt": days(1)[0].isoformat()}).json()
+    assert (changed["weeks"], changed["progress"]) == ({"met": 1, "total": 1}, 100)
+
+    reopened = client.delete(f"{url}/evaluation").json()
+    assert (reopened["weeks"], reopened["progress"]) == ({"met": 1, "total": 4}, 25)
+    history = client.get(f"{url}/progress").json()
+    assert [(point["day"], point["progress"]) for point in history] == [
+        (MONDAY.isoformat(), 0),
+        (days(2)[0].isoformat(), 25),
+    ]
+
+
 def test_checkins_only_between_the_start_and_today(client, create_goal):
     goal = recurring_goal(create_goal, startDate=(MONDAY - timedelta(days=7)).isoformat())
     url = f"/api/goals/{goal['id']}/checkins"

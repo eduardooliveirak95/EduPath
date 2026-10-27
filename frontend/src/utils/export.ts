@@ -38,7 +38,7 @@ const CSV_COLUMNS: [string, (goal: Goal) => string | number][] = [
   ['Semanas cumpridas', (goal) => (goal.weeks ? `${goal.weeks.met} de ${goal.weeks.total}` : '')],
   ['Passos feitos', (goal) => `${goal.plan.filter((step) => step.done).length} de ${goal.plan.length}`],
   ['Plano', (goal) => goal.plan.map((step) => `${step.done ? '[x]' : '[ ]'} ${step.title}`).join('\n')],
-  ['Avaliado em', (goal) => goal.closedAt ?? ''],
+  ['Terminou em', (goal) => goal.closedAt ?? ''],
   ['Nota do resultado', (goal) => goal.outcomeNote ?? ''],
 ]
 

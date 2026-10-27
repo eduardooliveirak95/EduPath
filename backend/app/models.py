@@ -168,11 +168,18 @@ class Goal(Base):
         return GoalStatus.POR_AVALIAR if self.target_date < today else GoalStatus.EM_CURSO
 
     def weeks(self) -> "WeeksSummary | None":
-        """Num objetivo recorrente, as semanas que tem, quantas foram cumpridas e os dias."""
+        """Num objetivo recorrente, as semanas que tem, quantas foram cumpridas e os dias.
+
+        Avaliado antes da data limite, o objetivo acaba no dia em que terminou: as semanas
+        que faltavam deixam de contar.
+        """
         if self.times_per_week is None:
             return None
+        end = self.target_date
+        if self.closed_at is not None:
+            end = max(self.start_date, min(end, self.closed_at))
         days = (checkin.day for checkin in self.checkins)
-        return weeks_summary(self.start_date, self.target_date, self.times_per_week, days)
+        return weeks_summary(self.start_date, end, self.times_per_week, days)
 
     def current_progress(self) -> int:
         """Percentagem do objetivo: a dos dias feitos num objetivo recorrente, a dos passos

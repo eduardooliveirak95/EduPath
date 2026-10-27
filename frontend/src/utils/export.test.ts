@@ -37,7 +37,7 @@ describe('goalsToCsv', () => {
     expect(csv.endsWith('\r\n')).toBe(true)
     expect(header).toBe(
       'Objetivo;Descrição;Categoria;Estado;Início;Data limite;Progresso (%);Progresso pelos passos;' +
-        'Vezes por semana;Semanas cumpridas;Passos feitos;Plano;Avaliado em;Nota do resultado',
+        'Vezes por semana;Semanas cumpridas;Passos feitos;Plano;Terminou em;Nota do resultado',
     )
   })
 

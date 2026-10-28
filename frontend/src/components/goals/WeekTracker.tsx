@@ -1,8 +1,17 @@
 import { useState } from 'react'
 import { ChevronLeft, ChevronRight, CircleCheck, CircleX, Repeat } from 'lucide-react'
 import type { Goal, WeekResult } from '../../types'
-import { addDays, formatShortDate, formatWeekday, parseISODate } from '../../utils/date'
-import { canCheckIn, checkinsIn, currentWeekIndex, weekOf, weekState, type WeekState } from '../../utils/habits'
+import { formatWeekday, parseISODate } from '../../utils/date'
+import {
+  canCheckIn,
+  checkinsIn,
+  currentWeekIndex,
+  isCheckedIn,
+  weekLabel,
+  weekOf,
+  weekState,
+  type WeekState,
+} from '../../utils/habits'
 
 const SHORT_WEEKDAYS = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb']
 
@@ -27,14 +36,6 @@ interface WeekTrackerProps {
   onCheckin?: (goalId: number, day: string, done: boolean) => void
 }
 
-function weekLabel(week: WeekResult, today: string): string {
-  const contains = (day: string) => week.start <= day && day <= week.end
-  if (contains(today)) return 'Esta semana'
-  if (contains(addDays(today, -7))) return 'Semana passada'
-  const [monday, , , , , , sunday] = weekOf(week.start)
-  return `Semana de ${formatShortDate(monday)} a ${formatShortDate(sunday)}`
-}
-
 /**
  * Num objetivo recorrente: os dias de uma semana (de segunda a domingo), para marcar o que se fez,
  * e o resultado de cada semana. Começa na semana de hoje e as setas mostram as anteriores, para
@@ -49,7 +50,6 @@ export function WeekTracker({ goal, weeks, today, onCheckin }: WeekTrackerProps)
   const times = goal.timesPerWeek ?? 1
   const count = checkinsIn(goal, week)
   const state = weekState(week, count, today)
-  const done = new Set(goal.checkins)
   const states = weeks.map((each) => weekState(each, checkinsIn(goal, each), today))
   const tally = (wanted: WeekState) => states.filter((each) => each === wanted).length
 
@@ -95,7 +95,7 @@ export function WeekTracker({ goal, weeks, today, onCheckin }: WeekTrackerProps)
 
       <div className="week-tracker__days" role="group" aria-label={`Dias da semana de "${goal.title}"`}>
         {weekOf(week.start).map((day) => {
-          const checked = done.has(day)
+          const checked = isCheckedIn(goal, week, day)
           const isToday = day === today
           return (
             <button
@@ -117,7 +117,7 @@ export function WeekTracker({ goal, weeks, today, onCheckin }: WeekTrackerProps)
       {/* Todas as semanas do objetivo, numa faixa: cumpridas, não cumpridas e as que faltam. */}
       <div
         className={weeks.length > CROWDED_WEEKS ? 'week-strip week-strip--crowded' : 'week-strip'}
-        style={{ gridTemplateColumns: `repeat(${weeks.length}, 1fr)` }}
+        style={{ gridTemplateColumns: `repeat(${weeks.length}, minmax(0, 1fr))` }}
         role="img"
         aria-label={`Semanas: ${tally('cumprida')} cumpridas, ${tally('nao_cumprida')} não cumpridas, ${tally('em_curso') + tally('por_vir')} por acabar`}
       >

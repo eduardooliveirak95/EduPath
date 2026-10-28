@@ -1,5 +1,14 @@
 import { describe, expect, it } from 'vitest'
-import { canCheckIn, checkinsIn, currentWeekIndex, toggleDay, weekOf, weekState } from './habits'
+import {
+  canCheckIn,
+  checkinsIn,
+  currentWeekIndex,
+  isCheckedIn,
+  toggleDay,
+  weekLabel,
+  weekOf,
+  weekState,
+} from './habits'
 
 describe('weekOf', () => {
   it('vai de segunda a domingo', () => {
@@ -20,6 +29,17 @@ describe('checkinsIn', () => {
   })
 })
 
+describe('isCheckedIn', () => {
+  it('só os dias marcados dentro da semana do objetivo', () => {
+    const goal = { checkins: ['2026-10-19', '2026-10-21', '2026-10-23'] }
+    // Terminou na quarta: a sexta ficou marcada, mas já não conta.
+    const week = { start: '2026-10-19', end: '2026-10-21' }
+    expect(isCheckedIn(goal, week, '2026-10-21')).toBe(true)
+    expect(isCheckedIn(goal, week, '2026-10-20')).toBe(false)
+    expect(isCheckedIn(goal, week, '2026-10-23')).toBe(false)
+  })
+})
+
 describe('weekState', () => {
   const week = { start: '2026-10-19', end: '2026-10-25', needed: 3, done: 0 }
 
@@ -32,6 +52,21 @@ describe('weekState', () => {
     expect(weekState(week, 2, '2026-10-25')).toBe('em_curso')
     expect(weekState(week, 2, '2026-10-26')).toBe('nao_cumprida')
     expect(weekState(week, 0, '2026-10-18')).toBe('por_vir')
+  })
+})
+
+describe('weekLabel', () => {
+  it('esta semana e a passada, mesmo cortadas pelo início ou pelo fim do objetivo', () => {
+    expect(weekLabel({ start: '2026-10-26' }, '2026-10-28')).toBe('Esta semana')
+    expect(weekLabel({ start: '2026-10-19' }, '2026-10-28')).toBe('Semana passada')
+    // Começou na quinta, 22: a semana não tem a segunda-feira.
+    expect(weekLabel({ start: '2026-10-22' }, '2026-10-27')).toBe('Semana passada')
+    expect(weekLabel({ start: '2026-10-22' }, '2026-10-25')).toBe('Esta semana')
+  })
+
+  it('as outras, de segunda a domingo', () => {
+    expect(weekLabel({ start: '2026-10-12' }, '2026-10-28')).toBe('Semana de 12/10 a 18/10')
+    expect(weekLabel({ start: '2026-10-01' }, '2026-10-28')).toBe('Semana de 28/09 a 4/10')
   })
 })
 

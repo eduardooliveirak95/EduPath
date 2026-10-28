@@ -94,3 +94,73 @@ test('marca um dia esquecido na semana passada e vê o resultado de cada semana'
   await expect(label).toHaveText('Esta semana')
   await expect(card.getByRole('img', { name: /^Semanas: \d+ cumpridas, \d+ não cumpridas/ })).toBeVisible()
 })
+
+/** Uma promessa e a função que a cumpre, para combinar a ordem das respostas da API. */
+function signal() {
+  let done: () => void = () => {}
+  const promise = new Promise<void>((resolve) => (done = resolve))
+  return { promise, done }
+}
+
+test('dias marcados seguidos ficam todos, mesmo com as respostas por outra ordem', async ({ page }) => {
+  await openFromSidebar(page, 'Objetivos')
+  const title = 'Ir ao ginásio 3 vezes por semana'
+  const card = page.locator('.goal-card').filter({ hasText: title })
+  const days = card.getByRole('group', { name: `Dias da semana de "${title}"` })
+  const previous = card.getByRole('button', { name: `Semana anterior de "${title}"` })
+  const progress = card.getByRole('progressbar')
+  await previous.click()
+  const pressed = days.locator('[aria-pressed="true"]')
+  while ((await pressed.count()) > 0) {
+    const saved = page.waitForResponse((response) => response.url().includes('/checkins/'))
+    await pressed.first().click()
+    await saved
+  }
+
+  // A resposta da segunda só chega depois da da terça (e não traz a terça). Depois, o objetivo
+  // pedido outra vez só chega depois de marcada a quarta (e não traz a quarta).
+  const mondaySent = signal()
+  const tuesdayDelivered = signal()
+  const refetchSent = signal()
+  const wednesdayDelivered = signal()
+  const refetchDelivered = signal()
+  let checkins = 0
+  await page.route('**/api/goals/*/checkins/*', async (route) => {
+    const order = ++checkins
+    const response = await route.fetch()
+    if (order === 1) {
+      mondaySent.done()
+      await tuesdayDelivered.promise
+    }
+    await route.fulfill({ response })
+    if (order === 2) tuesdayDelivered.done()
+    if (order === 3) wednesdayDelivered.done()
+  })
+  await page.route(/\/api\/goals\/\d+$/, async (route) => {
+    if (route.request().method() !== 'GET') return route.fallback()
+    const response = await route.fetch()
+    refetchSent.done()
+    await wednesdayDelivered.promise
+    await route.fulfill({ response })
+    refetchDelivered.done()
+  })
+
+  await days.getByRole('button', { name: /^segunda-feira/ }).click()
+  await mondaySent.promise
+  await days.getByRole('button', { name: /^terça-feira/ }).click()
+  await refetchSent.promise
+  await days.getByRole('button', { name: /^quarta-feira/ }).click()
+  await refetchDelivered.promise
+  // Dá tempo ao site para tratar a última resposta, a do objetivo pedido outra vez.
+  await page.waitForTimeout(500)
+  await expect(card.locator('.week-tracker__count')).toHaveText('3 de 3 · Cumprida')
+  await expect(pressed).toHaveCount(3)
+  const shown = await progress.getAttribute('aria-valuenow')
+
+  // O que ficou no ecrã é o que a API guardou, incluindo a percentagem.
+  await page.unrouteAll()
+  await page.reload()
+  await previous.click()
+  await expect(pressed).toHaveCount(3)
+  await expect(progress).toHaveAttribute('aria-valuenow', shown ?? '')
+})

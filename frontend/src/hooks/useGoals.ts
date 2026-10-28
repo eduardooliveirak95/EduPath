@@ -20,6 +20,11 @@ export function useGoals() {
   const [reloadKey, setReloadKey] = useState(0)
   // Conta as alterações feitas nesta app, para uma lista pedida antes delas não as desfazer.
   const changeCount = useRef(0)
+  // Dias a marcar ou desmarcar em cada objetivo recorrente: pedidos que ainda não tiveram resposta,
+  // e se houve mais de um ao mesmo tempo.
+  const pendingCheckins = useRef(new Map<number, { count: number; overlapped: boolean }>())
+  // Quantos dias se começaram a marcar ou desmarcar em cada objetivo, desde que a app abriu.
+  const startedCheckins = useRef(new Map<number, number>())
 
   useEffect(() => {
     let cancelled = false
@@ -129,20 +134,43 @@ export function useGoals() {
       }),
 
     // Num objetivo recorrente, marca ou desmarca um dia. Mostra-o logo e põe depois o objetivo
-    // que a API devolve, com a percentagem (dos dias feitos) já calculada por ela.
+    // que a API devolve, com a percentagem (dos dias feitos) já calculada por ela. Com vários
+    // dias marcados seguidos, nenhuma resposta sozinha os traz todos (e podem chegar por outra
+    // ordem): espera pela última e, nesse caso, pede o objetivo outra vez.
     setCheckin: (goalId: number, day: string, done: boolean) =>
       run(async () => {
         const mark = (value: boolean) =>
           changeGoals((current) =>
             current.map((goal) => (goal.id === goalId ? { ...goal, checkins: toggleDay(goal.checkins, day, value) } : goal)),
           )
+        const pending = pendingCheckins.current.get(goalId) ?? { count: 0, overlapped: false }
+        pendingCheckins.current.set(goalId, pending)
+        startedCheckins.current.set(goalId, (startedCheckins.current.get(goalId) ?? 0) + 1)
+        pending.count += 1
+        pending.overlapped ||= pending.count > 1
         mark(done)
+
+        let updated: Goal | null = null
+        let failure: unknown = null
         try {
-          replaceGoal(await (done ? api.addCheckin(goalId, day) : api.removeCheckin(goalId, day)))
+          updated = await (done ? api.addCheckin(goalId, day) : api.removeCheckin(goalId, day))
         } catch (error) {
+          failure = error
           mark(!done)
-          throw error
         }
+        pending.count -= 1
+        if (pending.count === 0) {
+          pendingCheckins.current.delete(goalId)
+          if (pending.overlapped) {
+            const started = startedCheckins.current.get(goalId)
+            // Se não vier (ex.: sem rede), os dias ficam como estão no ecrã: já foram guardados.
+            const fresh = await api.getGoal(goalId).catch(() => null)
+            // Se entretanto se marcou outro dia, a resposta desse é que vale (já os traz todos).
+            updated = startedCheckins.current.get(goalId) === started ? fresh : null
+          }
+          if (updated) replaceGoal(updated)
+        }
+        if (failure) throw failure
       }),
 
     // Lança ApiError se falhar, para o formulário do passo mostrar o erro e manter o texto.

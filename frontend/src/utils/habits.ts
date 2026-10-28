@@ -1,5 +1,5 @@
 import type { Goal, WeekResult } from '../types'
-import { addDays, parseISODate } from './date'
+import { addDays, formatShortDate, parseISODate } from './date'
 
 /** Os sete dias (de segunda a domingo) da semana de um dia, em AAAA-MM-DD. */
 export function weekOf(day: string): string[] {
@@ -16,6 +16,14 @@ export function checkinsIn(goal: Pick<Goal, 'checkins'>, week: Pick<WeekResult, 
   return goal.checkins.filter((day) => day >= week.start && day <= week.end).length
 }
 
+/**
+ * Se o dia conta como feito nessa semana: marcado e dentro do objetivo. Um dia marcado antes de o
+ * objetivo terminar mais cedo (ou de a data limite mudar) fica guardado, mas já não conta.
+ */
+export function isCheckedIn(goal: Pick<Goal, 'checkins'>, week: Pick<WeekResult, 'start' | 'end'>, day: string) {
+  return day >= week.start && day <= week.end && goal.checkins.includes(day)
+}
+
 /** Uma semana é cumprida com os dias que pede; senão, não cumprida se já acabou, em curso ou por vir. */
 export type WeekState = 'cumprida' | 'nao_cumprida' | 'em_curso' | 'por_vir'
 
@@ -23,6 +31,17 @@ export function weekState(week: WeekResult, done: number, today: string): WeekSt
   if (done >= week.needed) return 'cumprida'
   if (week.end < today) return 'nao_cumprida'
   return week.start <= today ? 'em_curso' : 'por_vir'
+}
+
+/**
+ * O nome de uma semana: "Esta semana", "Semana passada" ou "Semana de 12/10 a 18/10". Compara as
+ * segundas-feiras, porque a primeira e a última semana de um objetivo podem não as ter.
+ */
+export function weekLabel(week: Pick<WeekResult, 'start'>, today: string): string {
+  const [monday, , , , , , sunday] = weekOf(week.start)
+  if (monday === weekOf(today)[0]) return 'Esta semana'
+  if (monday === weekOf(addDays(today, -7))[0]) return 'Semana passada'
+  return `Semana de ${formatShortDate(monday)} a ${formatShortDate(sunday)}`
 }
 
 /** A semana de hoje ou, se o objetivo ainda não começou ou já acabou, a primeira ou a última. */

@@ -167,6 +167,8 @@ export const auth = {
 export const api = {
   listGoals: () => request<Goal[]>('/api/goals'),
 
+  getGoal: (goalId: number) => request<Goal>(`/api/goals/${goalId}`),
+
   createGoal: (goal: NewGoal) => request<Goal>('/api/goals', 'POST', goal),
 
   updateGoal: (goalId: number, changes: GoalChanges) => request<Goal>(`/api/goals/${goalId}`, 'PATCH', changes),

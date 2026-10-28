@@ -290,6 +290,11 @@
 .week-strip {
   display: grid;
   gap: 3px;
+  /* Com centenas de semanas, os espaços passavam a largura do cartão. O padding (com a margem
+     ao contrário, para não mudar o lugar) deixa espaço para o contorno da semana mostrada. */
+  overflow: hidden;
+  padding: 3px;
+  margin: -3px;
 }
 
 .week-strip--crowded {

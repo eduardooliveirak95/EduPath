@@ -21,7 +21,7 @@ interface GoalCardProps {
   onRepeat?: (goalId: number) => void
   /** Mostra o botão da evolução do progresso. */
   onShowProgress?: (goalId: number) => void
-  /** Num objetivo recorrente em curso, deixa marcar os dias desta semana. */
+  /** Num objetivo recorrente ainda por avaliar, deixa marcar os dias (desta semana e das anteriores). */
   onCheckin?: (goalId: number, day: string, done: boolean) => void
   /** Mostra o estado ao lado da categoria (onde há objetivos com estados diferentes). */
   showStatus?: boolean

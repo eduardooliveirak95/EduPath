@@ -31,8 +31,8 @@ export interface Goal {
   timesPerWeek: number | null
   /** Dias registados num objetivo recorrente (AAAA-MM-DD), por ordem. */
   checkins: string[]
-  /** Semanas de um objetivo recorrente e quantas foram cumpridas. */
-  weeks: { met: number; total: number } | null
+  /** Semanas de um objetivo recorrente, quantas foram cumpridas e cada uma, por ordem. */
+  weeks: { met: number; total: number; results: WeekResult[] } | null
   status: GoalStatus
   plan: PlanStep[]
   outcome: GoalOutcome | null
@@ -40,6 +40,17 @@ export interface Goal {
   closedAt: string | null
   createdAt: string
   updatedAt: string
+}
+
+/**
+ * Uma semana de um objetivo recorrente: os dias dela que caem no objetivo (de segunda a domingo,
+ * ou menos na primeira e na última), quantos pede e quantos foram feitos.
+ */
+export interface WeekResult {
+  start: string
+  end: string
+  needed: number
+  done: number
 }
 
 /** A percentagem de um objetivo num dia (o último valor desse dia), para a evolução do progresso. */

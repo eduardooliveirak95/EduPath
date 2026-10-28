@@ -47,6 +47,11 @@ export function HistoryItem({ goal, onEdit, onReopen, onRepeat, detailed = false
           <div className="history-item__details">
             <CategoryBadge category={goal.category} />
             <span>{goal.progress}% de progresso</span>
+            {goal.weeks && (
+              <span>
+                {goal.weeks.met}/{goal.weeks.total} semanas cumpridas
+              </span>
+            )}
             {total > 0 && (
               <span>
                 {done}/{total} passos

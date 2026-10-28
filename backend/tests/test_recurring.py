@@ -17,23 +17,35 @@ def days(*offsets: int) -> list[date]:
     return [MONDAY + timedelta(days=offset) for offset in offsets]
 
 
+def counts(goal: dict) -> dict:
+    """As semanas cumpridas e o total, sem a lista de cada semana."""
+    return {"met": goal["weeks"]["met"], "total": goal["weeks"]["total"]}
+
+
 def test_weeks_go_from_monday_to_sunday():
     # Três semanas inteiras, 2 vezes por semana: a 1.ª e a 3.ª cumpridas, 5 dos 6 dias feitos.
     start, target = MONDAY, MONDAY + timedelta(days=20)
-    assert weeks_summary(start, target, 2, days(0, 6, 7, 15, 16)) == (2, 3, 5, 6)
-    assert weeks_summary(start, target, 2, []) == (0, 3, 0, 6)
+    assert weeks_summary(start, target, 2, days(0, 6, 7, 15, 16))[:4] == (2, 3, 5, 6)
+    assert weeks_summary(start, target, 2, [])[:4] == (0, 3, 0, 6)
 
 
 def test_extra_days_do_not_make_up_for_another_week():
     start, target = MONDAY, MONDAY + timedelta(days=13)
-    assert weeks_summary(start, target, 2, days(0, 1, 2, 3)) == (1, 2, 2, 4)
+    assert weeks_summary(start, target, 2, days(0, 1, 2, 3))[:4] == (1, 2, 2, 4)
 
 
 def test_incomplete_weeks_ask_only_for_the_days_they_have():
     # Começa num sábado e acaba numa terça: a 1.ª semana tem 2 dias, a última também.
     start, target = MONDAY + timedelta(days=5), MONDAY + timedelta(days=15)
     assert weeks_summary(start, target, 3, days(5, 6)).met == 1
-    assert weeks_summary(start, target, 3, days(5, 6, 14, 15)) == (2, 3, 4, 7)
+    summary = weeks_summary(start, target, 3, days(5, 6, 14, 15))
+    assert summary[:4] == (2, 3, 4, 7)
+    # Cada semana com os dias dela que caem no objetivo, os que pede e os feitos.
+    assert summary.results == [
+        (days(5)[0], days(6)[0], 2, 2),
+        (days(7)[0], days(13)[0], 3, 0),
+        (days(14)[0], days(15)[0], 2, 2),
+    ]
     # Os dias fora do objetivo não contam.
     assert weeks_summary(start, target, 1, days(0, 16)).met == 0
 
@@ -50,7 +62,7 @@ def recurring_goal(create_goal, **fields) -> dict:
 
 def test_recurring_goal_progress_counts_each_day_done(client, create_goal):
     goal = recurring_goal(create_goal, progress=50, progressFromSteps=True)
-    assert (goal["timesPerWeek"], goal["checkins"], goal["weeks"]) == (
+    assert (goal["timesPerWeek"], goal["checkins"], counts(goal)) == (
         3,
         [],
         {"met": 0, "total": 4},
@@ -62,14 +74,18 @@ def test_recurring_goal_progress_counts_each_day_done(client, create_goal):
     # Cada dia feito conta logo, mesmo sem a semana estar cumprida: 1 dos 12 pedidos dá 8%.
     first = client.put(f"{url}/{MONDAY}")
     assert first.status_code == 200, first.text
-    assert (first.json()["weeks"], first.json()["progress"]) == ({"met": 0, "total": 4}, 8)
+    assert (counts(first.json()), first.json()["progress"]) == ({"met": 0, "total": 4}, 8)
     response = client.put(f"{url}/{MONDAY + timedelta(days=1)}")
-    assert (response.json()["weeks"], response.json()["progress"]) == ({"met": 0, "total": 4}, 17)
+    assert (counts(response.json()), response.json()["progress"]) == ({"met": 0, "total": 4}, 17)
+    assert response.json()["weeks"]["results"][:2] == [
+        {"start": "2026-06-15", "end": "2026-06-21", "needed": 3, "done": 2},
+        {"start": "2026-06-22", "end": "2026-06-28", "needed": 3, "done": 0},
+    ]
     updated = client.put(f"{url}/{MONDAY}").json()  # o mesmo dia outra vez não muda nada
     assert updated["checkins"] == [day.isoformat() for day in days(0, 1)]
 
     updated = client.put(f"{url}/{MONDAY + timedelta(days=2)}").json()
-    assert (updated["weeks"], updated["progress"]) == ({"met": 1, "total": 4}, 25)
+    assert (counts(updated), updated["progress"]) == ({"met": 1, "total": 4}, 25)
 
     updated = client.delete(f"{url}/{MONDAY + timedelta(days=1)}").json()
     assert (updated["weeks"]["met"], updated["progress"]) == (0, 17)
@@ -93,13 +109,16 @@ def test_evaluated_early_the_goal_ends_on_the_day_it_ended(client, create_goal):
 
     # Avaliado na quarta, só conta essa semana até quarta: os 3 dias pedidos foram feitos.
     evaluated = client.post(f"{url}/evaluation", json={"outcome": "sucedido"}).json()
-    assert (evaluated["weeks"], evaluated["progress"]) == ({"met": 1, "total": 1}, 100)
+    assert (counts(evaluated), evaluated["progress"]) == ({"met": 1, "total": 1}, 100)
     # A terminar na terça, essa semana só pedia 2 dias.
     changed = client.patch(url, json={"closedAt": days(1)[0].isoformat()}).json()
-    assert (changed["weeks"], changed["progress"]) == ({"met": 1, "total": 1}, 100)
+    assert (counts(changed), changed["progress"]) == ({"met": 1, "total": 1}, 100)
+    assert changed["weeks"]["results"] == [
+        {"start": "2026-06-15", "end": "2026-06-16", "needed": 2, "done": 2}
+    ]
 
     reopened = client.delete(f"{url}/evaluation").json()
-    assert (reopened["weeks"], reopened["progress"]) == ({"met": 1, "total": 4}, 25)
+    assert (counts(reopened), reopened["progress"]) == ({"met": 1, "total": 4}, 25)
     history = client.get(f"{url}/progress").json()
     assert [(point["day"], point["progress"]) for point in history] == [
         (MONDAY.isoformat(), 0),
@@ -141,7 +160,7 @@ def test_turning_recurrence_on_and_off(client, create_goal):
     url = f"/api/goals/{goal['id']}"
 
     on = client.patch(url, json={"timesPerWeek": 1}).json()
-    assert (on["timesPerWeek"], on["weeks"], on["progress"]) == (1, {"met": 0, "total": 4}, 0)
+    assert (on["timesPerWeek"], counts(on), on["progress"]) == (1, {"met": 0, "total": 4}, 0)
     client.put(f"{url}/checkins/{MONDAY}")
 
     off = client.patch(url, json={"timesPerWeek": None}).json()

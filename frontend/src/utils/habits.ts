@@ -1,4 +1,4 @@
-import type { Goal } from '../types'
+import type { Goal, WeekResult } from '../types'
 import { addDays, parseISODate } from './date'
 
 /** Os sete dias (de segunda a domingo) da semana de um dia, em AAAA-MM-DD. */
@@ -8,10 +8,27 @@ export function weekOf(day: string): string[] {
   return Array.from({ length: 7 }, (_, index) => addDays(monday, index))
 }
 
-/** Quantos dias da semana de `today` estão registados. */
-export function checkinsThisWeek(goal: Pick<Goal, 'checkins'>, today: string): number {
-  const week = weekOf(today)
-  return goal.checkins.filter((day) => week.includes(day)).length
+/**
+ * Quantos dias da semana estão marcados. Conta-os aqui (e não usa o `done` da API) para o
+ * resultado da semana mudar logo ao marcar um dia.
+ */
+export function checkinsIn(goal: Pick<Goal, 'checkins'>, week: Pick<WeekResult, 'start' | 'end'>): number {
+  return goal.checkins.filter((day) => day >= week.start && day <= week.end).length
+}
+
+/** Uma semana é cumprida com os dias que pede; senão, não cumprida se já acabou, em curso ou por vir. */
+export type WeekState = 'cumprida' | 'nao_cumprida' | 'em_curso' | 'por_vir'
+
+export function weekState(week: WeekResult, done: number, today: string): WeekState {
+  if (done >= week.needed) return 'cumprida'
+  if (week.end < today) return 'nao_cumprida'
+  return week.start <= today ? 'em_curso' : 'por_vir'
+}
+
+/** A semana de hoje ou, se o objetivo ainda não começou ou já acabou, a primeira ou a última. */
+export function currentWeekIndex(weeks: Pick<WeekResult, 'end'>[], today: string): number {
+  const index = weeks.findIndex((week) => today <= week.end)
+  return index === -1 ? weeks.length - 1 : index
 }
 
 /**

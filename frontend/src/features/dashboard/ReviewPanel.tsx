@@ -45,6 +45,11 @@ function ReviewItem({ goal, today, onEvaluate, onEdit }: ReviewItemProps) {
             <CategoryBadge category={goal.category} />
             <span>{describeDaysLeft(daysBetween(today, goal.targetDate))}</span>
             <span>· {goal.progress}%</span>
+            {goal.weeks && (
+              <span>
+                · {goal.weeks.met}/{goal.weeks.total} semanas cumpridas
+              </span>
+            )}
           </div>
         </div>
         {/* Editar também serve para prolongar o prazo, em vez de avaliar já. */}

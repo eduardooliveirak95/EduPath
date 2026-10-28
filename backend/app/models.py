@@ -190,12 +190,23 @@ class Goal(Base):
         return steps_progress(self.plan) if self.progress_from_steps else self.progress
 
 
+class WeekResult(NamedTuple):
+    """Uma semana de um objetivo recorrente: os dias dela que caem no objetivo, quantos pede
+    e quantos foram feitos."""
+
+    start: date
+    end: date
+    needed: int
+    done: int
+
+
 class WeeksSummary(NamedTuple):
     met: int
     total: int
     # Os dias que contam para a percentagem (em cada semana, até aos pedidos) e os pedidos.
     done: int
     needed: int
+    results: list[WeekResult]
 
 
 def weeks_summary(
@@ -213,14 +224,16 @@ def weeks_summary(
     total = (target - first_monday).days // 7 + 1
     per_week = Counter((day - first_monday).days // 7 for day in days if start <= day <= target)
     met = done = needed = 0
+    results: list[WeekResult] = []
     for week in range(total):
         monday = first_monday + timedelta(weeks=week)
-        days_in_goal = (min(monday + timedelta(days=6), target) - max(monday, start)).days + 1
-        asked = min(times_per_week, days_in_goal)
+        first, last = max(monday, start), min(monday + timedelta(days=6), target)
+        asked = min(times_per_week, (last - first).days + 1)
         met += per_week[week] >= asked
         done += min(per_week[week], asked)
         needed += asked
-    return WeeksSummary(met, total, done, needed)
+        results.append(WeekResult(first, last, asked, per_week[week]))
+    return WeeksSummary(met, total, done, needed, results)
 
 
 class GoalCheckin(Base):

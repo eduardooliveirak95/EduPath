@@ -63,7 +63,7 @@ describe('goalsToCsv', () => {
   })
 
   it('num objetivo recorrente, as vezes por semana e as semanas cumpridas', () => {
-    const habit = { ...goal, title: 'Ginásio', timesPerWeek: 3, weeks: { met: 5, total: 12 } }
+    const habit = { ...goal, title: 'Ginásio', timesPerWeek: 3, weeks: { met: 5, total: 12, results: [] } }
     expect(goalsToCsv([habit]).split('\r\n')[1].split(';').slice(8, 10)).toEqual(['3', '5 de 12'])
   })
 

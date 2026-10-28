@@ -87,7 +87,8 @@ export function GoalCard({
         />
       </div>
 
-      {goal.weeks && goal.status === 'em_curso' && <WeekTracker goal={goal} today={today} onCheckin={onCheckin} />}
+      {/* Os avaliados também mostram as semanas, mas sem deixar marcar dias. */}
+      {goal.weeks && <WeekTracker goal={goal} weeks={goal.weeks.results} today={today} onCheckin={onCheckin} />}
 
       <footer className="goal-card__footer">
         {goal.weeks ? (

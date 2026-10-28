@@ -86,9 +86,17 @@ TimesPerWeek = Annotated[int, Field(ge=1, le=7)]
 RECURRING = "Objetivo recorrente: quantas vezes por semana (de segunda a domingo)."
 
 
+class WeekRead(ApiModel):
+    start: date = Field(description="Primeiro dia da semana no objetivo (a segunda ou o início).")
+    end: date = Field(description="Último dia da semana no objetivo (o domingo ou o fim).")
+    needed: int = Field(description="Dias que a semana pede: as vezes por semana ou menos.")
+    done: int = Field(description="Dias feitos. A semana fica cumprida com done >= needed.")
+
+
 class Weeks(ApiModel):
     met: int
     total: int
+    results: list[WeekRead] = Field(description="Cada semana do objetivo, por ordem.")
 
 
 class GoalCreate(ApiModel):
@@ -199,7 +207,12 @@ class GoalRead(ApiModel):
             "status": goal.status(today),
             "progress": goal.current_progress(),
             "checkins": [checkin.day for checkin in goal.checkins],
-            "weeks": weeks and Weeks(met=weeks.met, total=weeks.total),
+            "weeks": weeks
+            and Weeks(
+                met=weeks.met,
+                total=weeks.total,
+                results=[WeekRead(**week._asdict()) for week in weeks.results],
+            ),
         }
         data = {name: getattr(goal, name) for name in cls.model_fields if name not in derived}
         return cls.model_validate({**data, **derived})

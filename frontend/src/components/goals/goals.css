@@ -212,7 +212,7 @@
   font-weight: 600;
 }
 
-.week-tracker__count.is-met {
+.week-tracker__count.is-cumprida {
   color: var(--success);
 }
 
@@ -263,4 +263,58 @@
   font-size: 0.85rem;
   font-weight: 700;
   font-variant-numeric: tabular-nums;
+}
+
+.week-tracker__nav {
+  display: inline-flex;
+  gap: 2px;
+}
+
+.week-tracker__week {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: center;
+  gap: 4px 12px;
+  font-size: 0.85rem;
+}
+
+.week-tracker__label {
+  font-weight: 600;
+}
+
+.week-tracker__count.is-nao_cumprida {
+  color: var(--danger);
+}
+
+.week-strip {
+  display: grid;
+  gap: 3px;
+}
+
+.week-strip--crowded {
+  gap: 1px;
+}
+
+.week-strip__week {
+  height: 6px;
+  border-radius: 3px;
+  background: var(--border);
+}
+
+.week-strip__week.is-cumprida {
+  background: var(--success);
+}
+
+.week-strip__week.is-nao_cumprida {
+  background: var(--danger);
+}
+
+.week-strip__week.is-em_curso {
+  background: color-mix(in srgb, var(--primary) 35%, var(--border));
+}
+
+.week-strip__week.is-selected {
+  outline: 2px solid var(--text);
+  outline-offset: 1px;
 }

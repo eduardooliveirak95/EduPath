@@ -8,7 +8,7 @@ O que tem:
 
 - painel com os objetivos em curso, os próximos passos e os prazos que estão a chegar
 - planos passo a passo para cada objetivo, pela ordem que se quiser
-- objetivos recorrentes, como ir ao ginásio três vezes por semana, em que se marca cada dia em que se fez e o progresso sobe com cada dia feito
+- objetivos recorrentes, como ir ao ginásio três vezes por semana, em que se marca cada dia em que se fez e o progresso sobe com cada dia feito; cada semana fica cumprida ou não, à vista no cartão, e um dia esquecido de uma semana anterior marca-se depois
 - um gráfico com a evolução do progresso de cada objetivo, ao lado do ritmo que seria preciso para chegar aos 100% na data limite
 - avaliação no fim do prazo, ou antes se já estiver feito, com a data em que terminou e uma nota sobre como correu, que se podem mudar depois
 - histórico organizado por mês, com a taxa de sucesso geral e por categoria
